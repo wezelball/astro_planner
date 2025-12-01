@@ -1,37 +1,31 @@
+# config/config.toml
+
 [location]
-latitude = 40.1234
-longitude = -83.1234
-elevation_m = 300
+latitude = 40.0
+longitude = -105.0
+elevation_m = 1700
 
 [minima]
-min_altitude_deg = 20
-min_fov_fill = 0.15
-max_fov_fill = 0.85
-
-[moon]
-max_illumination_pct = 30
-min_angular_separation_deg = 30
+min_altitude_deg = 20.0
+min_fov_fill = 0.1
+max_fov_fill = 0.8
 
 [[optics]]
-name = "C8 EdgeHD + Camera A"
-focal_length_mm = 2032
-sensor_width_mm = 22.3
-sensor_height_mm = 14.9
-has_focal_reducer = false
-reducer_ratio = 1.0
+name = "ED80 + DSLR"
+telescope_aperture_mm = 80
+telescope_focal_length_mm = 600
+camera_sensor_width_mm = 22
+camera_sensor_height_mm = 14
+camera_pixel_width = 4000
+camera_pixel_height = 2600
+focal_reducer = 0.63
 
 [[optics]]
-name = "RedCat 51 + Camera B"
-focal_length_mm = 250
-sensor_width_mm = 17.3
-sensor_height_mm = 13.0
-has_focal_reducer = false
-reducer_ratio = 1.0
-
-[[optics]]
-name = "C8 EdgeHD + Reducer + DSLR (unmounted)"
-focal_length_mm = 2032
-sensor_width_mm = 36.0
-sensor_height_mm = 24.0
-has_focal_reducer = true
-reducer_ratio = 0.7
+name = "ED80 + Small CCD"
+telescope_aperture_mm = 80
+telescope_focal_length_mm = 600
+camera_sensor_width_mm = 13.2
+camera_sensor_height_mm = 8.8
+camera_pixel_width = 1024
+camera_pixel_height = 768
+focal_reducer = 1.0
