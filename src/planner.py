@@ -1,10 +1,14 @@
 # src/planner.py
 import math
-import pandas as pd
-from datetime import datetime, timedelta, time
-import numpy as np
+#import pandas as pd
+#from datetime import datetime, timedelta, time
+#import numpy as np
+#from .horizon import horizon_altitude_at
 
-from .horizon import horizon_altitude_at
+import pandas as pd
+from datetime import datetime, timedelta
+from src.ephemeris import get_default_ephemeris, get_body_radec
+from src.altaz import altaz_from_radec
 
 # We try to import skyfield; if not available we will raise an informative error at runtime.
 try:
@@ -123,63 +127,94 @@ class Planner:
     def plan(
         self,
         date,
-        optics_name,
+        optics,
         max_magnitude=12.0,
         min_altitude=20.0,
         fov_fill_range=(0.1, 1.0),
-        optics=None
+        object_list=None
     ):
         """
-        Returns a DataFrame of candidate targets for the given date and filters.
+        Return a DataFrame of candidate targets for the given date, optics, and filters.
 
-        Parameters:
-        - date: datetime.date object
-        - optics_name: string (name of selected optics, for reference)
-        - max_magnitude: float, maximum allowed magnitude
-        - min_altitude: float, minimum altitude in degrees
-        - fov_fill_range: tuple (min, max) fraction of FOV the object can occupy
-        - optics: Optics object (used to compute FOV fill fraction)
+        Parameters
+        ----------
+        date : datetime.date
+            Date for planning.
+        optics : Optics
+            Optics/camera object.
+        max_magnitude : float
+            Maximum V-mag to include.
+        min_altitude : float
+            Minimum altitude (deg) above horizon.
+        fov_fill_range : tuple
+            Min/max fraction of FOV that object should fill.
+        object_list : list of dict
+            Catalog objects.
 
-        Returns:
-        - pandas.DataFrame with filtered candidate objects
+        Returns
+        -------
+        pandas.DataFrame
+            Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, visible_hours
         """
-        results = []
 
-        for obj in self.catalog:
-            # ----------------------------
-            # FOV fill filtering
-            # ----------------------------
-            if optics is not None:
-                # Use 'size_deg' if defined in catalog; else default 1 deg
-                object_size_deg = obj.get('size_deg', 1.0)
-                fov_fill = optics.fov_fill_fraction(object_size_deg)
-                if fov_fill < fov_fill_range[0] or fov_fill > fov_fill_range[1]:
-                    continue  # skip object
+        import pandas as pd
 
-            # ----------------------------
-            # Magnitude filter
-            # ----------------------------
-            if obj.get('mag', 99.0) > max_magnitude:
+        if object_list is None:
+            print("No catalog objects provided!")
+            return pd.DataFrame()
+
+        candidates = []
+
+        # Quick debug counters
+        printed_debug = 0
+
+        for obj in object_list:
+            name = obj.get('name', 'Unknown')
+            ra = obj.get('ra_deg')
+            dec = obj.get('dec_deg')
+            mag = obj.get('magnitude')
+            object_size_deg = obj.get('size_deg')
+
+            # Skip objects missing RA/Dec
+            if ra is None or dec is None:
                 continue
 
-            # ----------------------------
-            # Minimum altitude filter
-            # Placeholder: currently using catalog field 'altitude_deg' if present
-            # Replace with real Alt/Az calculation later
-            # ----------------------------
-            if obj.get('altitude_deg', 0.0) < min_altitude:
+            # Skip too faint objects
+            if mag is not None and mag > max_magnitude:
                 continue
 
-            # ----------------------------
-            # Add object to results
-            # ----------------------------
-            results.append(obj)
+            # Handle missing size_deg: assign small default for testing
+            if object_size_deg is None:
+                object_size_deg = 0.01  # 36 arcsec
 
-        # Convert to DataFrame for Streamlit display
-        df = pd.DataFrame(results)
+            # Compute FOV fill fraction
+            fov_fill = optics.fov_fill_fraction(object_size_deg)
 
-        # Optional: sort by magnitude (brightest first)
-        if not df.empty:
-            df.sort_values(by='mag', inplace=True)
+            # Apply FOV filter
+            if fov_fill < fov_fill_range[0] or fov_fill > fov_fill_range[1]:
+                continue
+
+            # Placeholder: compute alt/az and visibility (replace with Skyfield calculations)
+            alt_deg = 45.0  # temporary fixed value
+            az_deg = 180.0  # temporary fixed value
+            visible_hours = 4.0  # temporary fixed value
+
+            candidates.append({
+                'name': name,
+                'type': obj.get('type', 'Unknown'),
+                'mag': mag,
+                'size_deg': object_size_deg,
+                'alt_deg': alt_deg,
+                'az_deg': az_deg,
+                'visible_hours': visible_hours
+            })
+
+            # Print debug info for first few objects
+            if printed_debug < 10:
+                print(f"[DEBUG] {name}: mag={mag}, size_deg={object_size_deg}, FOV fill={fov_fill:.3f}")
+                printed_debug += 1
+
+        # Convert to DataFrame
+        df = pd.DataFrame(candidates)
 
         return df
