@@ -1,10 +1,8 @@
 # src/planner.py
 import math
-#import pandas as pd
-#from datetime import datetime, timedelta, time
-#import numpy as np
-#from .horizon import horizon_altitude_at
-
+import numpy as np
+from skyfield import almanac
+from skyfield.api import Loader, Topos, Star, wgs84
 import pandas as pd
 from datetime import datetime, timedelta
 from src.ephemeris import get_default_ephemeris, get_body_radec
@@ -18,6 +16,10 @@ try:
 except Exception as e:
     SKYFIELD_AVAILABLE = False
     _SKYFIELD_IMPORT_ERROR = e
+
+ts = load.timescale()
+eph = load('de421.bsp')
+earth = eph['earth']
 
 # Utility: compute diagonal FOV in arcminutes given focal length (mm) and sensor size (mm)
 def compute_fov_arcmin(focal_length_mm, sensor_width_mm, sensor_height_mm, reducer_ratio=1.0):
@@ -130,7 +132,7 @@ class Planner:
             optics,
             max_magnitude=12.0,
             min_altitude=20.0,
-            fov_fill_range=(0.1, 1.0),
+            fov_fill_range=(0.0, 1.0),
             object_list=None
         ):
         """
@@ -157,27 +159,43 @@ class Planner:
             Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, fov_fill, visible_hours
         """
         import pandas as pd
+        import numpy as np
+        from datetime import datetime, timedelta
         from skyfield.api import Loader, Topos, Star
 
         if object_list is None:
             print("No catalog objects provided!")
             return pd.DataFrame()
 
-        # Load ephemeris once
+        # ----------------------------
+        # Skyfield setup
+        # ----------------------------
         load = Loader('./skyfield_data')
         ts = load.timescale()
+        #lat = self.config["location"]["latitude"]
+        #lon = self.config["location"]["longitude"]
+        #elev = self.config["location"]["elevation_m"]
         eph = load('de421.bsp')
 
-        # Convert date to Skyfield time (UTC)
-        t = ts.utc(date.year, date.month, date.day, 4)  # adjust UTC as needed
+        # Topos (the geographic site) and a geocentric observer attached to Earth
+        #observer_topos = Topos(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
+        #observer = eph['earth'] + observer_topos  # geocentric observer used with .at(...)
+        # Earth reference
+        
 
-        # Observer location
+        # Compute current altitude/az at local midnight (approx)
+        #t_midnight = ts.utc(date.year, date.month, date.day, 4)  # 04:00 UTC ≈ local midnight EST/EDT
+
+        # ============================================
+
         lat = self.config["location"]["latitude"]
         lon = self.config["location"]["longitude"]
         elev = self.config["location"]["elevation_m"]
-        observer = eph['earth'] + Topos(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
+        earth = eph['earth']
+        observer = earth + wgs84.latlon(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
 
         candidates = []
+
         counts = {
             "total": 0,
             "no_size": 0,
@@ -203,43 +221,75 @@ class Planner:
                 counts["filtered_mag"] += 1
                 continue
 
-            # FOV fraction
+            # FOV filter
             try:
                 fov_fill = optics.fov_fill_fraction(size_deg)
-            except Exception as e:
+            except Exception:
                 counts["filtered_fov"] += 1
                 continue
+
             if fov_fill < fov_fill_range[0] or fov_fill > fov_fill_range[1]:
                 counts["filtered_fov"] += 1
                 continue
 
-            # Alt/Az calculation
+            # Skyfield Star object
             ra_hours = obj["ra_deg"] / 15.0
             dec_deg = obj["dec_deg"]
             star = Star(ra_hours=ra_hours, dec_degrees=dec_deg)
-            apparent = observer.at(t).observe(star).apparent()
-            alt, az, distance = apparent.altaz()
+
+            # Compute current altitude/az at local midnight (approx)            
+            # NEW — using earth + wgs84 location + star.observe
+            t_midnight = ts.utc(date.year, date.month, date.day, 4)  # 04:00 UTC ≈ local midnight EST/EDT
+            astrometric = observer.at(t_midnight).observe(star)
+            apparent = astrometric.apparent()
+            alt, az, _ = apparent.altaz()
+
             alt_deg = alt.degrees
             az_deg = az.degrees
 
-            # Altitude filter
             if alt_deg < min_altitude:
                 counts["filtered_alt"] += 1
                 continue
 
-            # Passed all filters
+            # ----------------------------
+            # Compute visible hours safely
+            # ----------------------------
+            t_start_dt = datetime(date.year, date.month, date.day, 0, 0)
+            t_end_dt   = t_start_dt + timedelta(hours=24)
+            dt_minutes = 15
+            minutes = np.arange(0, (t_end_dt - t_start_dt).total_seconds() / 60, dt_minutes)
+
+            visible_count = 0
+            for m in minutes:
+                sample_dt = t_start_dt + timedelta(minutes=m)
+                ts_sample = ts.utc(sample_dt.year, sample_dt.month, sample_dt.day,
+                                sample_dt.hour, sample_dt.minute)
+                ast = observer.at(ts_sample).observe(star)
+                alt, _, _ = ast.apparent().altaz()
+                #alt, _, _ = observer.at(ts_sample).observe(star).apparent().altaz()
+                if alt.degrees >= min_altitude:
+                    visible_count += 1
+
+            visible_hours = visible_count * dt_minutes / 60.0
+
+            # ----------------------------
+            # Append filtered object
+            # ----------------------------
             counts["passed"] += 1
+
             obj_out = obj.copy()
-            obj_out.update({
-                "alt_deg": alt_deg,
-                "az_deg": az_deg,
-                "fov_fill": fov_fill,
-                "visible_hours": None,  # Placeholder for future visibility calculation
-                "mag": mag 
-            })
+            obj_out["fov_fill"] = fov_fill
+            obj_out["alt_deg"] = alt_deg
+            obj_out["az_deg"] = az_deg
+            obj_out["visible_hours"] = visible_hours
+            # keep UI sorting compatibility — add 'mag' field if our catalog uses 'magnitude'
+            obj_out["mag"] = obj_out.get("magnitude", obj_out.get("mag", None))
             candidates.append(obj_out)
 
+
+        # ----------------------------
         # Debug summary
+        # ----------------------------
         print("Catalog summary:")
         print(f"  Total objects: {counts['total']}")
         print(f"  Missing size (skipped): {counts['no_size']}")
@@ -248,4 +298,8 @@ class Planner:
         print(f"  Filtered by altitude: {counts['filtered_alt']}")
         print(f"  Passed filters: {counts['passed']}")
 
-        return pd.DataFrame(candidates)
+        # ----------------------------
+        # Return DataFrame
+        # ----------------------------
+        df = pd.DataFrame(candidates)
+        return df

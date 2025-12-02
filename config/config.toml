@@ -6,8 +6,8 @@ longitude = -77.9
 elevation_m = 116
 
 [minima]
-min_altitude_deg = 20.0
-min_fov_fill = 0.0
+min_altitude_deg = 25.0
+min_fov_fill = 0.1
 max_fov_fill = 1.0
 
 [[optics]]
