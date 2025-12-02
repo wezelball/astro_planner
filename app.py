@@ -109,6 +109,11 @@ st.sidebar.header("Date & Moon")
 date = st.sidebar.date_input("Date to plan (local)")
 st.sidebar.checkbox("Show Clear Sky Clock (if within 48h)", value=False)
 
+# Define selectable types (matches Planner.filter logic)
+selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
+selected_type = st.sidebar.selectbox("Select object type", selectable_types)
+
+
 # Sidebar sorting
 st.sidebar.header("Sorting")
 sort_by_visibility = st.sidebar.checkbox("Sort by visibility duration (hours)", value=False)
@@ -140,7 +145,8 @@ results = planner.plan(
     max_magnitude=max_mag,
     min_altitude=min_alt,
     fov_fill_range=fov_min,
-    object_list=object_list
+    object_list=object_list,
+    selected_type=selected_type
 )
 
 # Sort results if needed

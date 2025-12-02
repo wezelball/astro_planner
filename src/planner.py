@@ -133,7 +133,8 @@ class Planner:
             max_magnitude=12.0,
             min_altitude=20.0,
             fov_fill_range=(0.0, 1.0),
-            object_list=None
+            object_list=None,
+            selected_type=None
         ):
         """
         Return a DataFrame of candidate targets for the given date, optics, and filters.
@@ -215,7 +216,7 @@ class Planner:
             # Type filter (single-choice)
             # ----------------------------
             # Set this to the type selected in the UI
-            selected_type = "G"  # for example, user picks galaxies
+            #selected_type = "G"  # for example, user picks galaxies
 
             # Only allow selectable types
             allowed_types = {"G", "RfN", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN"}
@@ -253,6 +254,18 @@ class Planner:
                 counts["filtered_fov"] += 1
                 continue
 
+            # ----------------------------
+            # Type filter (optional)
+            # ----------------------------
+            obj_type = obj.get("type")
+            if selected_type is not None:
+                if selected_type == "Neb":  # group all nebula types together
+                    if obj_type not in ["RfN", "HII", "PN", "Neb", "Cl+N", "EmN"]:
+                        continue
+                else:
+                    if obj_type != selected_type:
+                        continue
+            
             # Skyfield Star object
             ra_hours = obj["ra_deg"] / 15.0
             dec_deg = obj["dec_deg"]
