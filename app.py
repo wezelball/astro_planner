@@ -65,13 +65,13 @@ object_list = load_opengc_catalog()
 # Debug: check how many OpenNGC objects have size data
 # -------------------------------------------------------
 num_objects = len(object_list)
-num_with_size = sum(1 for o in object_list if o["size_deg"] is not None)
-num_with_mag  = sum(1 for o in object_list if o["magnitude"] is not None)
+#num_with_size = sum(1 for o in object_list if o["size_deg"] is not None)
+#num_with_mag  = sum(1 for o in object_list if o["magnitude"] is not None)
 
-st.sidebar.write("Catalog summary:")
+#st.sidebar.write("Catalog summary:")
 st.sidebar.write(f"Total objects loaded: {num_objects}")
-st.sidebar.write(f"Objects with size: {num_with_size}")
-st.sidebar.write(f"Objects with V-magnitude: {num_with_mag}")
+#st.sidebar.write(f"Objects with size: {num_with_size}")
+#st.sidebar.write(f"Objects with V-magnitude: {num_with_mag}")
 # -------------------------------------------------------
 # Debug: check how many OpenNGC objects have size data
 # -------------------------------------------------------

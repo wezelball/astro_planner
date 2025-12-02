@@ -1,31 +1,31 @@
 # config/config.toml
 
 [location]
-latitude = 40.0
-longitude = -105.0
-elevation_m = 1700
+latitude = 37.8
+longitude = -77.9
+elevation_m = 116
 
 [minima]
 min_altitude_deg = 20.0
-min_fov_fill = 0.1
-max_fov_fill = 0.8
+min_fov_fill = 0.0
+max_fov_fill = 1.0
 
 [[optics]]
-name = "ED80 + DSLR"
-telescope_aperture_mm = 80
-telescope_focal_length_mm = 600
-camera_sensor_width_mm = 22
-camera_sensor_height_mm = 14
-camera_pixel_width = 4000
-camera_pixel_height = 2600
-focal_reducer = 0.63
-
-[[optics]]
-name = "ED80 + Small CCD"
-telescope_aperture_mm = 80
-telescope_focal_length_mm = 600
-camera_sensor_width_mm = 13.2
-camera_sensor_height_mm = 8.8
-camera_pixel_width = 1024
-camera_pixel_height = 768
+name = "Tak FS-102 + ASI533MM Pro"
+telescope_aperture_mm = 102
+telescope_focal_length_mm = 820
+camera_sensor_width_mm = 11.31
+camera_sensor_height_mm = 11.31
+camera_pixel_width = 3008
+camera_pixel_height = 3008
 focal_reducer = 1.0
+
+[[optics]]
+name = "LX200 + ASI533MC Pro"
+telescope_aperture_mm = 203
+telescope_focal_length_mm = 2000
+camera_sensor_width_mm = 11.3
+camera_sensor_height_mm = 11.3
+camera_pixel_width = 3008
+camera_pixel_height = 3008
+focal_reducer = 0.63

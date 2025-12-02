@@ -130,91 +130,108 @@ class Planner:
         optics,
         max_magnitude=12.0,
         min_altitude=20.0,
-        fov_fill_range=(0.1, 1.0),
+        fov_fill_range=(0.0, 1.0),
         object_list=None
     ):
-        """
-        Return a DataFrame of candidate targets for the given date, optics, and filters.
-
-        Parameters
-        ----------
-        date : datetime.date
-            Date for planning.
-        optics : Optics
-            Optics/camera object.
-        max_magnitude : float
-            Maximum V-mag to include.
-        min_altitude : float
-            Minimum altitude (deg) above horizon.
-        fov_fill_range : tuple
-            Min/max fraction of FOV that object should fill.
-        object_list : list of dict
-            Catalog objects.
-
-        Returns
-        -------
-        pandas.DataFrame
-            Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, visible_hours
-        """
-
         import pandas as pd
+        from skyfield.api import Loader, Star, Topos
 
         if object_list is None:
             print("No catalog objects provided!")
             return pd.DataFrame()
 
+        # ---------- PRELOAD SKYFIELD (only once) ----------
+        load = Loader('./skyfield_data')
+        ts = load.timescale()
+        eph = load('de421.bsp')
+
+        # Observing time (local midnight shifted to UTC)
+        t = ts.utc(date.year, date.month, date.day, 4)
+
+        # Observer position
+        lat = self.config["location"]["latitude"]
+        lon = self.config["location"]["longitude"]
+        elev = self.config["location"]["elevation_m"]
+
+        observer = eph['earth'] + Topos(
+            latitude_degrees=lat,
+            longitude_degrees=lon,
+            elevation_m=elev
+        )
+
         candidates = []
 
-        # Quick debug counters
-        printed_debug = 0
+        counts = {
+            "total": 0,
+            "no_size": 0,
+            "filtered_fov": 0,
+            "filtered_mag": 0,
+            "filtered_alt": 0,
+            "passed": 0
+        }
 
+        # ---------- PROCESS CATALOG ----------
         for obj in object_list:
-            name = obj.get('name', 'Unknown')
-            ra = obj.get('ra_deg')
-            dec = obj.get('dec_deg')
-            mag = obj.get('magnitude')
-            object_size_deg = obj.get('size_deg')
+            counts["total"] += 1
+            name = obj.get("name", "Unknown")
 
-            # Skip objects missing RA/Dec
-            if ra is None or dec is None:
+            # --- size -----------------------------------------------------------------
+            size_deg = obj.get("size_deg")
+            if size_deg is None:
+                counts["no_size"] += 1
                 continue
 
-            # Skip too faint objects
+            # --- magnitude ------------------------------------------------------------
+            mag = obj.get("magnitude")
             if mag is not None and mag > max_magnitude:
+                counts["filtered_mag"] += 1
                 continue
 
-            # Handle missing size_deg: assign small default for testing
-            if object_size_deg is None:
-                object_size_deg = 0.01  # 36 arcsec
-
-            # Compute FOV fill fraction
-            fov_fill = optics.fov_fill_fraction(object_size_deg)
-
-            # Apply FOV filter
-            if fov_fill < fov_fill_range[0] or fov_fill > fov_fill_range[1]:
+            # --- FOV fill -------------------------------------------------------------
+            try:
+                fov_fill = optics.fov_fill_fraction(size_deg)
+            except:
+                counts["filtered_fov"] += 1
                 continue
 
-            # Placeholder: compute alt/az and visibility (replace with Skyfield calculations)
-            alt_deg = 45.0  # temporary fixed value
-            az_deg = 180.0  # temporary fixed value
-            visible_hours = 4.0  # temporary fixed value
+            if not (fov_fill_range[0] <= fov_fill <= fov_fill_range[1]):
+                counts["filtered_fov"] += 1
+                continue
 
-            candidates.append({
-                'name': name,
-                'type': obj.get('type', 'Unknown'),
-                'mag': mag,
-                'size_deg': object_size_deg,
-                'alt_deg': alt_deg,
-                'az_deg': az_deg,
-                'visible_hours': visible_hours
-            })
+            #print(f"Object: {name}: size_deg={size_deg}, fov_fill={fov_fill:.4f}")
 
-            # Print debug info for first few objects
-            if printed_debug < 10:
-                print(f"[DEBUG] {name}: mag={mag}, size_deg={object_size_deg}, FOV fill={fov_fill:.3f}")
-                printed_debug += 1
+            # --- Skyfield alt/az ------------------------------------------------------
+            ra_hours = obj["ra_deg"] / 15.0
+            dec_deg = obj["dec_deg"]
 
-        # Convert to DataFrame
-        df = pd.DataFrame(candidates)
+            star = Star(ra_hours=ra_hours, dec_degrees=dec_deg)
 
-        return df
+            apparent = observer.at(t).observe(star).apparent()
+            alt, az, dist = apparent.altaz()  # CORRECT — no observer passed
+
+            alt_deg = alt.degrees
+            az_deg = az.degrees
+
+            if alt_deg < min_altitude:
+                counts["filtered_alt"] += 1
+                continue
+
+            # --- Passed all filters ---------------------------------------------------
+            counts["passed"] += 1
+
+            obj_out = obj.copy()
+            obj_out["alt_deg"] = alt_deg
+            obj_out["az_deg"] = az_deg
+            obj_out["fov_fill"] = fov_fill
+            obj_out["visible_hours"] = None
+            # rename magnitude to mag for UI consistency
+            obj_out["mag"] = obj_out["magnitude"]
+
+            candidates.append(obj_out)
+
+        # ---------- DEBUG SUMMARY ----------
+        print("Catalog summary:")
+        for k, v in counts.items():
+            print(f"  {k}: {v}")
+
+        return pd.DataFrame(candidates)
