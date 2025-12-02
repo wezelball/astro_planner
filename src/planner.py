@@ -125,14 +125,14 @@ class Planner:
         return ra_deg, dec_deg
 
     def plan(
-        self,
-        date,
-        optics,
-        max_magnitude=12.0,
-        min_altitude=20.0,
-        fov_fill_range=(0.1, 1.0),
-        object_list=None
-    ):
+            self,
+            date,
+            optics,
+            max_magnitude=12.0,
+            min_altitude=20.0,
+            fov_fill_range=(0.1, 1.0),
+            object_list=None
+        ):
         """
         Return a DataFrame of candidate targets for the given date, optics, and filters.
 
@@ -154,15 +154,28 @@ class Planner:
         Returns
         -------
         pandas.DataFrame
-            Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, visible_hours
+            Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, fov_fill, visible_hours
         """
-
         import pandas as pd
         from skyfield.api import Loader, Topos, Star
 
         if object_list is None:
             print("No catalog objects provided!")
             return pd.DataFrame()
+
+        # Load ephemeris once
+        load = Loader('./skyfield_data')
+        ts = load.timescale()
+        eph = load('de421.bsp')
+
+        # Convert date to Skyfield time (UTC)
+        t = ts.utc(date.year, date.month, date.day, 4)  # adjust UTC as needed
+
+        # Observer location
+        lat = self.config["location"]["latitude"]
+        lon = self.config["location"]["longitude"]
+        elev = self.config["location"]["elevation_m"]
+        observer = eph['earth'] + Topos(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
 
         candidates = []
         counts = {
@@ -174,28 +187,13 @@ class Planner:
             "passed": 0
         }
 
-        # Load Skyfield data
-        load = Loader('./skyfield_data')
-        ts = load.timescale()
-        eph = load('de421.bsp')
-
-        # Observer location
-        lat = self.config["location"]["latitude"]
-        lon = self.config["location"]["longitude"]
-        elev = self.config["location"]["elevation_m"]
-        observer = Topos(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
-        earth = eph['earth']
-
-        # Compute time at local midnight approx (UTC offset handling could be added)
-        t = ts.utc(date.year, date.month, date.day, 4)  # adjust as needed
-
         for obj in object_list:
             counts["total"] += 1
             name = obj.get("name", "Unknown")
             mag = obj.get("magnitude")
             size_deg = obj.get("size_deg")
 
-            # Skip if size is missing
+            # Skip objects without size
             if size_deg is None:
                 counts["no_size"] += 1
                 continue
@@ -205,7 +203,7 @@ class Planner:
                 counts["filtered_mag"] += 1
                 continue
 
-            # FOV fraction filter
+            # FOV fraction
             try:
                 fov_fill = optics.fov_fill_fraction(size_deg)
             except Exception as e:
@@ -215,16 +213,12 @@ class Planner:
                 counts["filtered_fov"] += 1
                 continue
 
-            # Skyfield: create Star object
+            # Alt/Az calculation
             ra_hours = obj["ra_deg"] / 15.0
             dec_deg = obj["dec_deg"]
             star = Star(ra_hours=ra_hours, dec_degrees=dec_deg)
-
-            # Compute apparent alt/az from observer
-            astrometric = (earth + observer).at(t).observe(star)
-            apparent = astrometric.apparent()
-            alt, az, _ = apparent.altaz()
-
+            apparent = observer.at(t).observe(star).apparent()
+            alt, az, distance = apparent.altaz()
             alt_deg = alt.degrees
             az_deg = az.degrees
 
@@ -233,19 +227,17 @@ class Planner:
                 counts["filtered_alt"] += 1
                 continue
 
-            # Rough visible_hours: fraction of night above min_altitude
-            # For now, placeholder: 1 hour if above min_altitude at this time
-            visible_hours = 1.0
-
-            # Append passing object
-            obj_out = obj.copy()
-            obj_out["fov_fill"] = fov_fill
-            obj_out["alt_deg"] = alt_deg
-            obj_out["az_deg"] = az_deg
-            obj_out["visible_hours"] = visible_hours
-            obj_out["mag"] = obj_out.pop("magnitude", None)  # Add this line
-            candidates.append(obj_out)
+            # Passed all filters
             counts["passed"] += 1
+            obj_out = obj.copy()
+            obj_out.update({
+                "alt_deg": alt_deg,
+                "az_deg": az_deg,
+                "fov_fill": fov_fill,
+                "visible_hours": None,  # Placeholder for future visibility calculation
+                "mag": mag 
+            })
+            candidates.append(obj_out)
 
         # Debug summary
         print("Catalog summary:")
@@ -256,5 +248,4 @@ class Planner:
         print(f"  Filtered by altitude: {counts['filtered_alt']}")
         print(f"  Passed filters: {counts['passed']}")
 
-        df = pd.DataFrame(candidates)
-        return df
+        return pd.DataFrame(candidates)
