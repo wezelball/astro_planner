@@ -79,7 +79,6 @@ class Optics:
         Strict definition: fraction = object_major_axis_deg / diagonal_fov_deg.
         object_size_deg must be a float (degrees). If object_size_deg is None, caller should decide (here we raise).
         """
-        print(f"ojject_size_deg: {object_size_deg}")
         if object_size_deg is None:
             # We raise here to make caller intentionally handle missing sizes.
             raise ValueError("object_size_deg is None; Optics.fov_fill_fraction requires a numeric size in degrees")

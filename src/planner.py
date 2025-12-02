@@ -130,37 +130,41 @@ class Planner:
         optics,
         max_magnitude=12.0,
         min_altitude=20.0,
-        fov_fill_range=(0.0, 1.0),
+        fov_fill_range=(0.1, 1.0),
         object_list=None
     ):
+        """
+        Return a DataFrame of candidate targets for the given date, optics, and filters.
+
+        Parameters
+        ----------
+        date : datetime.date
+            Date for planning.
+        optics : Optics
+            Optics/camera object.
+        max_magnitude : float
+            Maximum V-mag to include.
+        min_altitude : float
+            Minimum altitude (deg) above horizon.
+        fov_fill_range : tuple
+            Min/max fraction of FOV that object should fill.
+        object_list : list of dict
+            Catalog objects.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, visible_hours
+        """
+
         import pandas as pd
-        from skyfield.api import Loader, Star, Topos
+        from skyfield.api import Loader, Topos, Star
 
         if object_list is None:
             print("No catalog objects provided!")
             return pd.DataFrame()
 
-        # ---------- PRELOAD SKYFIELD (only once) ----------
-        load = Loader('./skyfield_data')
-        ts = load.timescale()
-        eph = load('de421.bsp')
-
-        # Observing time (local midnight shifted to UTC)
-        t = ts.utc(date.year, date.month, date.day, 4)
-
-        # Observer position
-        lat = self.config["location"]["latitude"]
-        lon = self.config["location"]["longitude"]
-        elev = self.config["location"]["elevation_m"]
-
-        observer = eph['earth'] + Topos(
-            latitude_degrees=lat,
-            longitude_degrees=lon,
-            elevation_m=elev
-        )
-
         candidates = []
-
         counts = {
             "total": 0,
             "no_size": 0,
@@ -170,68 +174,87 @@ class Planner:
             "passed": 0
         }
 
-        # ---------- PROCESS CATALOG ----------
+        # Load Skyfield data
+        load = Loader('./skyfield_data')
+        ts = load.timescale()
+        eph = load('de421.bsp')
+
+        # Observer location
+        lat = self.config["location"]["latitude"]
+        lon = self.config["location"]["longitude"]
+        elev = self.config["location"]["elevation_m"]
+        observer = Topos(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
+        earth = eph['earth']
+
+        # Compute time at local midnight approx (UTC offset handling could be added)
+        t = ts.utc(date.year, date.month, date.day, 4)  # adjust as needed
+
         for obj in object_list:
             counts["total"] += 1
             name = obj.get("name", "Unknown")
-
-            # --- size -----------------------------------------------------------------
+            mag = obj.get("magnitude")
             size_deg = obj.get("size_deg")
+
+            # Skip if size is missing
             if size_deg is None:
                 counts["no_size"] += 1
                 continue
 
-            # --- magnitude ------------------------------------------------------------
-            mag = obj.get("magnitude")
+            # Magnitude filter
             if mag is not None and mag > max_magnitude:
                 counts["filtered_mag"] += 1
                 continue
 
-            # --- FOV fill -------------------------------------------------------------
+            # FOV fraction filter
             try:
                 fov_fill = optics.fov_fill_fraction(size_deg)
-            except:
+            except Exception as e:
+                counts["filtered_fov"] += 1
+                continue
+            if fov_fill < fov_fill_range[0] or fov_fill > fov_fill_range[1]:
                 counts["filtered_fov"] += 1
                 continue
 
-            if not (fov_fill_range[0] <= fov_fill <= fov_fill_range[1]):
-                counts["filtered_fov"] += 1
-                continue
-
-            #print(f"Object: {name}: size_deg={size_deg}, fov_fill={fov_fill:.4f}")
-
-            # --- Skyfield alt/az ------------------------------------------------------
+            # Skyfield: create Star object
             ra_hours = obj["ra_deg"] / 15.0
             dec_deg = obj["dec_deg"]
-
             star = Star(ra_hours=ra_hours, dec_degrees=dec_deg)
 
-            apparent = observer.at(t).observe(star).apparent()
-            alt, az, dist = apparent.altaz()  # CORRECT — no observer passed
+            # Compute apparent alt/az from observer
+            astrometric = (earth + observer).at(t).observe(star)
+            apparent = astrometric.apparent()
+            alt, az, _ = apparent.altaz()
 
             alt_deg = alt.degrees
             az_deg = az.degrees
 
+            # Altitude filter
             if alt_deg < min_altitude:
                 counts["filtered_alt"] += 1
                 continue
 
-            # --- Passed all filters ---------------------------------------------------
-            counts["passed"] += 1
+            # Rough visible_hours: fraction of night above min_altitude
+            # For now, placeholder: 1 hour if above min_altitude at this time
+            visible_hours = 1.0
 
+            # Append passing object
             obj_out = obj.copy()
+            obj_out["fov_fill"] = fov_fill
             obj_out["alt_deg"] = alt_deg
             obj_out["az_deg"] = az_deg
-            obj_out["fov_fill"] = fov_fill
-            obj_out["visible_hours"] = None
-            # rename magnitude to mag for UI consistency
-            obj_out["mag"] = obj_out["magnitude"]
-
+            obj_out["visible_hours"] = visible_hours
+            obj_out["mag"] = obj_out.pop("magnitude", None)  # Add this line
             candidates.append(obj_out)
+            counts["passed"] += 1
 
-        # ---------- DEBUG SUMMARY ----------
+        # Debug summary
         print("Catalog summary:")
-        for k, v in counts.items():
-            print(f"  {k}: {v}")
+        print(f"  Total objects: {counts['total']}")
+        print(f"  Missing size (skipped): {counts['no_size']}")
+        print(f"  Filtered by FOV: {counts['filtered_fov']}")
+        print(f"  Filtered by mag: {counts['filtered_mag']}")
+        print(f"  Filtered by altitude: {counts['filtered_alt']}")
+        print(f"  Passed filters: {counts['passed']}")
 
-        return pd.DataFrame(candidates)
+        df = pd.DataFrame(candidates)
+        return df
