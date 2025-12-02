@@ -211,6 +211,27 @@ class Planner:
             mag = obj.get("magnitude")
             size_deg = obj.get("size_deg")
 
+            # ----------------------------
+            # Type filter (single-choice)
+            # ----------------------------
+            # Set this to the type selected in the UI
+            selected_type = "G"  # for example, user picks galaxies
+
+            # Only allow selectable types
+            allowed_types = {"G", "RfN", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN"}
+
+            obj_type = obj.get("type")
+            if obj_type is None:
+                continue  # skip objects without type
+
+            # Skip types that are ignored
+            if obj_type not in allowed_types:
+                continue
+
+            # Apply single-choice filter
+            if obj_type != selected_type:
+                continue
+
             # Skip objects without size
             if size_deg is None:
                 counts["no_size"] += 1
