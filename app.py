@@ -160,7 +160,8 @@ results = planner.plan(
     fov_fill_range=fov_min,
     object_list=object_list,
     selected_type=selected_type,
-    hour_utc = hour_utc
+    hour_utc = hour_utc,
+    minute_utc = minute_utc
 )
 
 # Sort results if needed

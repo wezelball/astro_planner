@@ -135,7 +135,8 @@ class Planner:
             fov_fill_range=(0.0, 1.0),
             object_list=None,
             selected_type=None,
-            hour_utc = 4
+            hour_utc = 0,
+            minute_utc = 0
         ):
         """
         Return a DataFrame of candidate targets for the given date, optics, and filters.
@@ -175,8 +176,7 @@ class Planner:
         load = Loader('./skyfield_data')
         ts = load.timescale()
         # Compute snapshot time for alt/az (default 04:00 UTC ≈ local midnight EST/EDT)
-        #t_snapshot = ts.utc(date.year, date.month, date.day, hour_utc)
-        t_snapshot = ts.utc(date.year, date.month, date.day, int(hour_utc), int((hour_utc % 1) * 60))
+        t_snapshot = ts.utc(date.year, date.month, date.day, hour_utc, minute_utc)
 
         eph = load('de421.bsp')
 
