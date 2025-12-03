@@ -134,7 +134,8 @@ class Planner:
             min_altitude=20.0,
             fov_fill_range=(0.0, 1.0),
             object_list=None,
-            selected_type=None
+            selected_type=None,
+            hour_utc = 4
         ):
         """
         Return a DataFrame of candidate targets for the given date, optics, and filters.
@@ -173,19 +174,11 @@ class Planner:
         # ----------------------------
         load = Loader('./skyfield_data')
         ts = load.timescale()
-        #lat = self.config["location"]["latitude"]
-        #lon = self.config["location"]["longitude"]
-        #elev = self.config["location"]["elevation_m"]
+        # Compute snapshot time for alt/az (default 04:00 UTC ≈ local midnight EST/EDT)
+        #t_snapshot = ts.utc(date.year, date.month, date.day, hour_utc)
+        t_snapshot = ts.utc(date.year, date.month, date.day, int(hour_utc), int((hour_utc % 1) * 60))
+
         eph = load('de421.bsp')
-
-        # Topos (the geographic site) and a geocentric observer attached to Earth
-        #observer_topos = Topos(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
-        #observer = eph['earth'] + observer_topos  # geocentric observer used with .at(...)
-        # Earth reference
-        
-
-        # Compute current altitude/az at local midnight (approx)
-        #t_midnight = ts.utc(date.year, date.month, date.day, 4)  # 04:00 UTC ≈ local midnight EST/EDT
 
         # ============================================
 
@@ -223,7 +216,7 @@ class Planner:
 
             # Normalize catalog type string
             obj_type = obj.get("type", "").strip()
-            print("Object type:", obj_type, "Name:", obj.get("name"))   # DEBUG
+            #print("Object type:", obj_type, "Name:", obj.get("name"))   # DEBUG
 
             if obj_type is None:
                 print("obj_type is None")
@@ -285,8 +278,8 @@ class Planner:
 
             # Compute current altitude/az at local midnight (approx)            
             # NEW — using earth + wgs84 location + star.observe
-            t_midnight = ts.utc(date.year, date.month, date.day, 4)  # 04:00 UTC ≈ local midnight EST/EDT
-            astrometric = observer.at(t_midnight).observe(star)
+    
+            astrometric = observer.at(t_snapshot).observe(star)
             apparent = astrometric.apparent()
             alt, az, _ = apparent.altaz()
 

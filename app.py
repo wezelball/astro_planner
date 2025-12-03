@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import time
 from src.config_loader import load_config_example
 #from src.catalog import load_catalog_sample
 from src.catalog import load_openngc_catalog
@@ -107,6 +108,18 @@ fov_min = st.sidebar.slider(
 # Sidebar date & moon
 st.sidebar.header("Date & Moon")
 date = st.sidebar.date_input("Date to plan (local)")
+
+# Select snapshot time (UTC)
+snapshot_time = st.sidebar.time_input(
+    "Snapshot Time (UTC)",
+    value=time(hour=4, minute=0),  # default: 04:00 UTC ≈ local midnight
+    key="snapshot_time_picker"
+)
+
+# Extract hour and minute
+hour_utc = snapshot_time.hour
+minute_utc = snapshot_time.minute
+
 st.sidebar.checkbox("Show Clear Sky Clock (if within 48h)", value=False)
 
 # Define selectable types (matches Planner.filter logic)
@@ -146,7 +159,8 @@ results = planner.plan(
     min_altitude=min_alt,
     fov_fill_range=fov_min,
     object_list=object_list,
-    selected_type=selected_type
+    selected_type=selected_type,
+    hour_utc = hour_utc
 )
 
 # Sort results if needed
