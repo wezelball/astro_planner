@@ -110,9 +110,9 @@ date = st.sidebar.date_input("Date to plan (local)")
 st.sidebar.checkbox("Show Clear Sky Clock (if within 48h)", value=False)
 
 # Define selectable types (matches Planner.filter logic)
-selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
+#selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
+selectable_types = ["G", "OCl", "PN", "Nebula", "SNR", "GCl"]
 selected_type = st.sidebar.selectbox("Select object type", selectable_types)
-
 
 # Sidebar sorting
 st.sidebar.header("Sorting")

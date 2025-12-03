@@ -219,19 +219,30 @@ class Planner:
             #selected_type = "G"  # for example, user picks galaxies
 
             # Only allow selectable types
-            allowed_types = {"G", "RfN", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN"}
+            allowed_types = {"G", "RfN", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "HII", "GCl"}
 
-            obj_type = obj.get("type")
+            # Normalize catalog type string
+            obj_type = obj.get("type", "").strip()
+            print("Object type:", obj_type, "Name:", obj.get("name"))   # DEBUG
+
             if obj_type is None:
+                print("obj_type is None")
                 continue  # skip objects without type
 
             # Skip types that are ignored
             if obj_type not in allowed_types:
+                print("obj_type is not in allowed types")
                 continue
 
             # Apply single-choice filter
-            if obj_type != selected_type:
-                continue
+            if selected_type is not None:
+                if selected_type == "Nebula":
+                    # include all nebula-related types in this group
+                    if obj_type not in ["RfN", "HII", "Neb", "Cl+N", "EmN"]:
+                        continue
+                else:
+                    if obj_type != selected_type:
+                        continue
 
             # Skip objects without size
             if size_deg is None:
@@ -257,10 +268,11 @@ class Planner:
             # ----------------------------
             # Type filter (optional)
             # ----------------------------
-            obj_type = obj.get("type")
+            obj_type = obj.get("type", "").strip()  # remove whitespace
+
             if selected_type is not None:
-                if selected_type == "Neb":  # group all nebula types together
-                    if obj_type not in ["RfN", "HII", "PN", "Neb", "Cl+N", "EmN"]:
+                if selected_type == "Nebula":  # group all nebula types together
+                    if obj_type not in ["RfN", "HII", "Neb", "Cl+N", "EmN"]:
                         continue
                 else:
                     if obj_type != selected_type:
