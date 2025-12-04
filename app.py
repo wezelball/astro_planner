@@ -132,10 +132,9 @@ st.sidebar.header("Sorting")
 sort_by_visibility = st.sidebar.checkbox("Sort by visibility duration (hours)", value=False)
 
 # Load catalogs and horizon
-#catalog = load_catalog_sample("data/messier_sample.csv")
 catalog_df = load_openngc_catalog("data/NGC.csv")
 
-horizon = parse_horizon_file("horizon/horizon_sample.txt")
+horizon = parse_horizon_file("horizon/GSpring_horizon.txt")
 
 # Optics instance
 optics_dict = next(o for o in config['optics'] if o['name'] == optics_choice)
@@ -161,7 +160,8 @@ results = planner.plan(
     object_list=object_list,
     selected_type=selected_type,
     hour_utc = hour_utc,
-    minute_utc = minute_utc
+    minute_utc = minute_utc,
+    horizon = horizon
 )
 
 # Sort results if needed

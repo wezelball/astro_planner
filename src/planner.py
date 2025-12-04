@@ -103,28 +103,59 @@ class Planner:
         dec_dms = row.get('dec_dms')
         # For RA, skyfield expects hours or degrees; we'll convert to degrees
         # For dec, use degrees
-        def hms_to_deg(hms):
-            parts = [p for p in str(hms).split(':')]
-            if len(parts) == 3:
-                h = float(parts[0])
-                m = float(parts[1])
-                s = float(parts[2])
-                return (abs(h) + m/60.0 + s/3600.0) * (15.0 if abs(h) <= 24 else 1.0) * ( -1 if str(hms).strip().startswith('-') else 1)
-            else:
-                return float(hms)
-        def dms_to_deg(dms):
-            parts = [p for p in str(dms).split(':')]
-            if len(parts) == 3:
-                d = float(parts[0])
-                m = float(parts[1])
-                s = float(parts[2])
-                sign = -1 if str(dms).strip().startswith('-') else 1
-                return sign * (abs(d) + m/60.0 + s/3600.0)
-            else:
-                return float(dms)
+    
+    def hms_to_deg(hms):
+        parts = [p for p in str(hms).split(':')]
+        if len(parts) == 3:
+            h = float(parts[0])
+            m = float(parts[1])
+            s = float(parts[2])
+            return (abs(h) + m/60.0 + s/3600.0) * (15.0 if abs(h) <= 24 else 1.0) * ( -1 if str(hms).strip().startswith('-') else 1)
+        else:
+            return float(hms)
+    
+    def dms_to_deg(dms):
+        parts = [p for p in str(dms).split(':')]
+        if len(parts) == 3:
+            d = float(parts[0])
+            m = float(parts[1])
+            s = float(parts[2])
+            sign = -1 if str(dms).strip().startswith('-') else 1
+            return sign * (abs(d) + m/60.0 + s/3600.0)
+        else:
+            return float(dms)
         ra_deg = hms_to_deg(ra_hms)
         dec_deg = dms_to_deg(dec_dms)
         return ra_deg, dec_deg
+
+    def horizon_alt(self, az_deg, horizon):
+        """
+        Return interpolated horizon altitude at given azimuth.
+        Horizon format: list of (az_deg, alt_deg).
+        """
+        if not horizon or len(horizon) < 2:
+            # Fail safe: assume flat horizon at 0°
+            return 0.0
+
+        az = az_deg % 360
+
+        for i in range(len(horizon) - 1):
+            az0, alt0 = horizon[i]
+            az1, alt1 = horizon[i + 1]
+
+            if az0 <= az <= az1:
+                # Linear interpolation
+                frac = (az - az0) / (az1 - az0)
+                return alt0 + frac * (alt1 - alt0)
+
+        # Wraparound case (last → first point)
+        az0, alt0 = horizon[-1]
+        az1, alt1 = horizon[0]
+        az1 += 360
+
+        frac = (az - az0) / (az1 - az0)
+        return alt0 + frac * (alt1 - alt0)
+
 
     def plan(
             self,
@@ -136,7 +167,8 @@ class Planner:
             object_list=None,
             selected_type=None,
             hour_utc = 0,
-            minute_utc = 0
+            minute_utc = 0,
+            horizon = None
         ):
         """
         Return a DataFrame of candidate targets for the given date, optics, and filters.
@@ -169,6 +201,10 @@ class Planner:
         if object_list is None:
             print("No catalog objects provided!")
             return pd.DataFrame()
+
+        # Warn if horizon file failed to load
+        if not horizon:
+            print("WARNING: Horizon file is empty or failed to load. Disabling horizon filtering.")
 
         # ----------------------------
         # Skyfield setup
@@ -219,12 +255,12 @@ class Planner:
             #print("Object type:", obj_type, "Name:", obj.get("name"))   # DEBUG
 
             if obj_type is None:
-                print("obj_type is None")
+                #print("obj_type is None")
                 continue  # skip objects without type
 
             # Skip types that are ignored
             if obj_type not in allowed_types:
-                print("obj_type is not in allowed types")
+                #print("obj_type is not in allowed types")
                 continue
 
             # Apply single-choice filter
@@ -286,7 +322,23 @@ class Planner:
             alt_deg = alt.degrees
             az_deg = az.degrees
 
-            if alt_deg < min_altitude:
+            # ----------------------------
+            # Horizon filter
+            # ----------------------------
+            if horizon:
+                h_alt = self.horizon_alt(az_deg, horizon)
+                if alt_deg < h_alt:
+                    counts["filtered_alt"] += 1
+                    continue
+
+            # Apply site-specific horizon if provided
+            if horizon is not None:
+                h_alt = self.horizon_alt(az_deg, horizon)
+                min_required_alt = max(min_altitude, h_alt)
+            else:
+                min_required_alt = min_altitude
+
+            if alt_deg < min_required_alt:
                 counts["filtered_alt"] += 1
                 continue
 
@@ -304,9 +356,17 @@ class Planner:
                 ts_sample = ts.utc(sample_dt.year, sample_dt.month, sample_dt.day,
                                 sample_dt.hour, sample_dt.minute)
                 ast = observer.at(ts_sample).observe(star)
-                alt, _, _ = ast.apparent().altaz()
-                #alt, _, _ = observer.at(ts_sample).observe(star).apparent().altaz()
-                if alt.degrees >= min_altitude:
+                alt, _, _ = ast.apparent().altaz()          
+
+                sample_alt = alt.degrees
+
+                if horizon is not None:
+                    h_alt = self.horizon_alt(az_deg, horizon)
+                    min_required_alt = max(min_altitude, h_alt)
+                else:
+                    min_required_alt = min_altitude
+
+                if sample_alt >= min_required_alt:
                     visible_count += 1
 
             visible_hours = visible_count * dt_minutes / 60.0

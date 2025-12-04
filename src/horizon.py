@@ -1,28 +1,40 @@
 import math
 
 def parse_horizon_file(path):
-    """Parse a simple horizon file with lines 'az,alt' (degrees).
+    """Parse a horizon file with lines 'az alt' OR 'az,alt' (degrees).
     Returns a sorted list of (az, alt) tuples.
     """
     pts = []
     with open(path, 'r') as f:
         for line in f:
-            line = line.split('#',1)[0].strip()
+            line = line.split('#', 1)[0].strip()
             if not line:
                 continue
+
+            # Accept either comma OR whitespace separation
             if ',' in line:
-                az,alt = line.split(',',1)
-                try:
-                    az = float(az)
-                    alt = float(alt)
-                    pts.append((az%360.0, alt))
-                except:
-                    continue
+                parts = line.split(',', 1)
+            else:
+                parts = line.split()
+
+            if len(parts) != 2:
+                continue
+
+            try:
+                az = float(parts[0])
+                alt = float(parts[1])
+                pts.append((az % 360.0, alt))
+            except ValueError:
+                continue
+
     pts.sort()
+
     # ensure wrap-around
     if pts and pts[0][0] != 0.0:
         pts = [(0.0, pts[0][1])] + pts
+
     return pts
+
 
 def horizon_altitude_at(pts, az):
     """Linear interpolation of horizon altitude at given az (degrees)."""
