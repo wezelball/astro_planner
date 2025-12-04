@@ -1,5 +1,6 @@
 import streamlit as st
-from datetime import time
+from datetime import datetime, date, time
+from zoneinfo import ZoneInfo   # Python 3.9+
 from src.config_loader import load_config_example
 #from src.catalog import load_catalog_sample
 from src.catalog import load_openngc_catalog
@@ -9,6 +10,8 @@ from src.planner import Planner
 from src.optics import Optics
 import pandas as pd
 from math import isnan
+
+LOCAL_TZ = ZoneInfo("America/New_York")
 
 @st.cache_data
 def load_opengc_catalog(path="data/NGC.csv"):
@@ -111,14 +114,20 @@ date = st.sidebar.date_input("Date to plan (local)")
 
 # Select snapshot time (UTC)
 snapshot_time = st.sidebar.time_input(
-    "Snapshot Time (UTC)",
+    "Snapshot Time (local civil time)",
     value=time(hour=4, minute=0),  # default: 04:00 UTC ≈ local midnight
     key="snapshot_time_picker"
 )
 
-# Extract hour and minute
-hour_utc = snapshot_time.hour
-minute_utc = snapshot_time.minute
+# Build LOCAL datetime from selected date + time
+local_dt = datetime.combine(date, snapshot_time)
+local_dt = local_dt.replace(tzinfo=LOCAL_TZ)
+
+# Convert to UTC
+utc_dt = local_dt.astimezone(ZoneInfo("UTC"))
+
+hour_utc = utc_dt.hour
+minute_utc = utc_dt.minute
 
 st.sidebar.checkbox("Show Clear Sky Clock (if within 48h)", value=False)
 

@@ -211,8 +211,15 @@ class Planner:
         # ----------------------------
         load = Loader('./skyfield_data')
         ts = load.timescale()
-        # Compute snapshot time for alt/az (default 04:00 UTC ≈ local midnight EST/EDT)
-        t_snapshot = ts.utc(date.year, date.month, date.day, hour_utc, minute_utc)
+        
+        # Compute snapshot time for alt/az (default 00:00 UTC)
+        t_snapshot = ts.utc(
+            date.year,
+            date.month,
+            date.day,
+            hour_utc,
+            minute_utc
+        )
 
         eph = load('de421.bsp')
 
