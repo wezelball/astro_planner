@@ -56,8 +56,10 @@ def plot_sky_polar(df, horizon):
     # ----------------------------
     if not df.empty:
         hover_text = [
-            f"<b>{name}</b><br>Alt: {alt:.1f}°<br>Az: {az:.1f}°"
-            for name, alt, az in zip(df["name"], df["alt_deg"], df["az_deg"])
+            #f"<b>{name}</b><br>Alt: {az:.1f}°<br>Az: {alt:.1f}°"
+            f"<b>{name}</b><br>Az: {az:.1f}°<br>Alt: {alt:.1f}°"
+            #for name, alt, az in zip(df["name"], df["alt_deg"], df["az_deg"])
+            for name, az, alt in zip(df["name"], df["az_deg"], df["alt_deg"])
         ]
 
         fig.add_trace(go.Scatterpolar(
