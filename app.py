@@ -10,6 +10,7 @@ from src.planner import Planner
 from src.optics import Optics
 import pandas as pd
 from math import isnan
+from src.plotting import plot_sky_polar
 
 LOCAL_TZ = ZoneInfo("America/New_York")
 
@@ -172,6 +173,12 @@ results = planner.plan(
     minute_utc = minute_utc,
     horizon = horizon
 )
+
+# Plot results
+st.subheader("Sky Plot")
+
+fig = plot_sky_polar(results, horizon)
+st.plotly_chart(fig, width = "stretch")
 
 # Sort results if needed
 if not results.empty:

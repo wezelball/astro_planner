@@ -55,14 +55,21 @@ def plot_sky_polar(df, horizon):
     # Plot objects
     # ----------------------------
     if not df.empty:
+        hover_text = [
+            f"<b>{name}</b><br>Alt: {alt:.1f}°<br>Az: {az:.1f}°"
+            for name, alt, az in zip(df["name"], df["alt_deg"], df["az_deg"])
+        ]
+
         fig.add_trace(go.Scatterpolar(
             theta=df["az_deg"],
             r=df["alt_deg"],
             mode="markers+text",
             text=df["name"],
             textposition="top center",
-            textfont=dict(color="red", size=11),  # ✅ FIX VISIBILITY
+            textfont=dict(color="red", size=11),
             marker=dict(size=8),
+            hovertext=hover_text,      # ✅ CUSTOM TOOLTIP
+            hoverinfo="text",          # ✅ HIDE r/theta
             name="Objects"
         ))
 
