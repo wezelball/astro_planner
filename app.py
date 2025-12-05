@@ -191,12 +191,12 @@ if not results.empty:
 st.subheader("Candidate Targets")
 if not results.empty:
     st.write(f"Found {len(results)} candidates for {date}")
-    display_columns = ['name', 'type', 'mag', 'size_deg', 'alt_deg', 'az_deg', 'visible_hours']
+    display_columns = ['name', 'type', 'mag', 'size_arcmin', 'alt_deg', 'az_deg', 'visible_hours']
     st.table(results[display_columns])
 else:
     st.write("No candidates found with current filters.")
 
-st.info(
-    "This is an MVP skeleton. The src modules contain the structure and placeholder functions.\n"
-    "Next steps: implement precise ephemeris calculations using Skyfield, visibility sampling, scoring, and Streamlit UI refinements."
-)
+#st.info(
+#    "This is an MVP skeleton. The src modules contain the structure and placeholder functions.\n"
+#    "Next steps: implement precise ephemeris calculations using Skyfield, visibility sampling, scoring, and Streamlit UI refinements."
+#)

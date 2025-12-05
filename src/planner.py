@@ -247,6 +247,7 @@ class Planner:
             name = obj.get("name", "Unknown")
             mag = obj.get("magnitude")
             size_deg = obj.get("size_deg")
+            size_arcmin = size_deg * 60.0 if size_deg is not None else None
 
             # ----------------------------
             # Type filter (single-choice)
@@ -384,6 +385,19 @@ class Planner:
             counts["passed"] += 1
 
             obj_out = obj.copy()
+
+            # Keep internal degree value for computations, but present arcminutes to the user:
+            # size_deg is used internally above; convert to arcminutes for display.
+            size_deg_internal = obj_out.get("size_deg", None)
+            if size_deg_internal is not None:
+                obj_out["size_arcmin"] = float(size_deg_internal) * 60.0
+            else:
+                obj_out["size_arcmin"] = None
+
+            # ✅ Remove old degree-based size column
+            if "size_deg" in obj_out:
+                del obj_out["size_deg"]
+
             obj_out["fov_fill"] = fov_fill
             obj_out["alt_deg"] = alt_deg
             obj_out["az_deg"] = az_deg
