@@ -97,12 +97,23 @@ optics_choice = st.sidebar.selectbox("Select optics/camera:", optics_names)
 
 # Sidebar filters
 st.sidebar.header("Filters")
-max_mag = st.sidebar.number_input("Max magnitude", value=12.0, step=0.5)
-min_alt = st.sidebar.number_input(
-    "Min altitude (deg)",
-    value=float(config['minima']['min_altitude_deg']),
-    step=1.0
+
+max_mag = st.sidebar.slider(
+    "Max Magnitude",
+    min_value=-2.0,
+    max_value=20.0,
+    value=12.0,
+    step=0.1
 )
+
+min_alt = st.sidebar.slider(
+    "Min Altitude (deg)",
+    min_value=0.0,
+    max_value=90.0,
+    value=20.0,
+    step=0.5
+)
+
 fov_min = st.sidebar.slider(
     "FOV fill fraction (min, max)",
     0.0, 1.0,
