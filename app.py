@@ -192,7 +192,10 @@ st.subheader("Candidate Targets")
 if not results.empty:
     st.write(f"Found {len(results)} candidates for {date}")
     display_columns = ['name', 'type', 'mag', 'size_arcmin', 'alt_deg', 'az_deg', 'visible_hours']
-    st.table(results[display_columns])
+    df_left_justified =  results.round(2).astype(str)
+
+    st.dataframe(df_left_justified, width="stretch")
+    
 else:
     st.write("No candidates found with current filters.")
 
