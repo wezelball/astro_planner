@@ -21,7 +21,7 @@ camera_pixel_height = 3008
 focal_reducer = 1.0
 
 [[optics]]
-name = "LX200 + ASI533MC Pro"
+name = "LX200 + ASI533MC w/ FR"
 telescope_aperture_mm = 203
 telescope_focal_length_mm = 2000
 camera_sensor_width_mm = 11.3
@@ -29,3 +29,13 @@ camera_sensor_height_mm = 11.3
 camera_pixel_width = 3008
 camera_pixel_height = 3008
 focal_reducer = 0.63
+
+[[optics]]
+name = "LX200 + ASI533MC w/o FR"
+telescope_aperture_mm = 203
+telescope_focal_length_mm = 2000
+camera_sensor_width_mm = 11.3
+camera_sensor_height_mm = 11.3
+camera_pixel_width = 3008
+camera_pixel_height = 3008
+focal_reducer = 1.0
