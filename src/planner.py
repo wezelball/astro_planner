@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from src.ephemeris import get_default_ephemeris, get_body_radec
 from src.altaz import altaz_from_radec
+from src.moon import moon_alt_az, moon_separation_deg, moon_alt_az_vector, moon_separation_deg_vector
 
 # We try to import skyfield; if not available we will raise an informative error at runtime.
 try:
@@ -168,7 +169,8 @@ class Planner:
             selected_type=None,
             hour_utc = 0,
             minute_utc = 0,
-            horizon = None
+            horizon = None,
+            moon_sep_min=None
         ):
         """
         Return a DataFrame of candidate targets for the given date, optics, and filters.
@@ -231,6 +233,18 @@ class Planner:
         earth = eph['earth']
         observer = earth + wgs84.latlon(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
 
+        # Moon position calculations
+        # geocentric observer already: use observer.at(t_snapshot).observe(...)
+        moon = eph['moon']   # or eph['moon'] shortcuts
+        astrometric_moon = observer.at(t_snapshot).observe(moon)
+        moon_apparent = astrometric_moon.apparent()
+
+        # moon altitude/azimuth (snapshot)
+        # compute moon alt/az at t_snapshot (single time)
+        moon_alt, moon_az, _ = moon_apparent.altaz()
+        moon_alt_deg = float(moon_alt.degrees)
+        moon_az_deg  = float(moon_az.degrees)
+
         candidates = []
 
         counts = {
@@ -248,7 +262,7 @@ class Planner:
             mag = obj.get("magnitude")
             size_deg = obj.get("size_deg")
             size_arcmin = size_deg * 60.0 if size_deg is not None else None
-
+          
             # ----------------------------
             # Type filter (single-choice)
             # ----------------------------
@@ -301,19 +315,6 @@ class Planner:
             if fov_fill < fov_fill_range[0] or fov_fill > fov_fill_range[1]:
                 counts["filtered_fov"] += 1
                 continue
-
-            # ----------------------------
-            # Type filter (optional)
-            # ----------------------------
-            obj_type = obj.get("type", "").strip()  # remove whitespace
-
-            if selected_type is not None:
-                if selected_type == "Nebula":  # group all nebula types together
-                    if obj_type not in ["RfN", "HII", "Neb", "Cl+N", "EmN"]:
-                        continue
-                else:
-                    if obj_type != selected_type:
-                        continue
             
             # Skyfield Star object
             ra_hours = obj["ra_deg"] / 15.0
@@ -321,8 +322,7 @@ class Planner:
             star = Star(ra_hours=ra_hours, dec_degrees=dec_deg)
 
             # Compute current altitude/az at local midnight (approx)            
-            # NEW — using earth + wgs84 location + star.observe
-    
+            # NEW — using earth + wgs84 location + star.observe  
             astrometric = observer.at(t_snapshot).observe(star)
             apparent = astrometric.apparent()
             alt, az, _ = apparent.altaz()
@@ -330,6 +330,40 @@ class Planner:
             alt_deg = alt.degrees
             az_deg = az.degrees
 
+            # ----------------------------
+            # Moon separation (snapshot) — compute now that `apparent` (object) exists
+            # ----------------------------
+            try:
+                moon_sep_deg = float(apparent.separation_from(moon_apparent).degrees)
+            except Exception:
+                moon_sep_deg = None
+
+            # Only report separation if Moon is above horizon at snapshot time
+            moon_sep_report = moon_sep_deg if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
+            
+            """
+            # compute angular separation between object and moon (degrees)
+            try:
+                moon_sep = float(apparent.separation_from(moon_apparent).degrees)
+            except Exception:
+                # fallback: if separation calculation fails, set to None
+                moon_sep = None
+
+            # Only report separation if Moon is above horizon at snapshot time
+            moon_sep_report = moon_sep if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
+            """
+
+            # ----------------------------
+            # Moon separation filter
+            # ----------------------------
+            min_sep_deg = moon_sep_min  # expected to be degrees or None
+            if min_sep_deg is not None:
+                # only apply if Moon is above horizon at snapshot AND we have a valid separation
+                if (moon_alt_deg is not None and moon_alt_deg > 0.0) and (moon_sep_deg is not None):
+                    if moon_sep_deg < min_sep_deg:
+                        counts["filtered_moon"] = counts.get("filtered_moon", 0) + 1
+                        continue
+ 
             # ----------------------------
             # Horizon filter
             # ----------------------------
@@ -404,6 +438,9 @@ class Planner:
             obj_out["visible_hours"] = visible_hours
             # keep UI sorting compatibility — add 'mag' field if our catalog uses 'magnitude'
             obj_out["mag"] = obj_out.get("magnitude", obj_out.get("mag", None))
+            obj_out["moon_sep_deg"] = moon_sep_deg if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
+            obj_out["moon_alt_deg"] = moon_alt_deg
+
             candidates.append(obj_out)
 
 

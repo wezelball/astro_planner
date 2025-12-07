@@ -124,6 +124,15 @@ fov_min = st.sidebar.slider(
 st.sidebar.header("Date & Moon")
 date = st.sidebar.date_input("Date to plan (local)")
 
+# Moon separation slider
+moon_sep_min = st.sidebar.slider(
+    "Minimum Moon Separation (°)",
+    min_value=0,
+    max_value=90,
+    value=30,
+    step=5
+)
+
 # Select snapshot time (UTC)
 snapshot_time = st.sidebar.time_input(
     "Snapshot Time (local civil time)",
@@ -182,7 +191,8 @@ results = planner.plan(
     selected_type=selected_type,
     hour_utc = hour_utc,
     minute_utc = minute_utc,
-    horizon = horizon
+    horizon = horizon,
+    moon_sep_min=moon_sep_min
 )
 
 # Plot results
