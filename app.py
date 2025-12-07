@@ -212,13 +212,17 @@ if not results.empty:
 st.subheader("Candidate Targets")
 if not results.empty:
     st.write(f"Found {len(results)} candidates for {date}")
-    display_columns = ['name', 'type', 'mag', 'size_arcmin', 'alt_deg', 'az_deg', 'visible_hours']
-    df_left_justified =  results.round(2).astype(str)
+    display_columns = ['name', 'type', 'mag', 'size_arcmin', 'alt_deg', 'az_deg', 'visible_hours', 'moon_sep_deg']
+
+    # keep numeric rounding, then select only the columns we want to show,
+    # and finally convert to strings for left-justified display
+    df_left_justified = results.round(2)
+    df_left_justified = df_left_justified.loc[:, display_columns].astype(str)
 
     st.dataframe(df_left_justified, width="stretch")
-    
 else:
     st.write("No candidates found with current filters.")
+
 
 #st.info(
 #    "This is an MVP skeleton. The src modules contain the structure and placeholder functions.\n"
