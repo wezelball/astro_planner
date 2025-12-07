@@ -78,39 +78,45 @@ for name, sep in zip(["M31 (NGC224)", "M44 (NGC2632)", "M13 (NGC6205)", "M3 (NGC
 """
 DEBUGGING
 
-# BLOCK BELOW STARTS AT LINE 266
-# compute separation between catalog object and Moon at t_snapshot
-star = Star(ra_hours=obj["ra_deg"]/15.0, dec_degrees=obj["dec_deg"])
-moon_sep_deg = moon_separation_deg(eph, ts, observer, t_snapshot, star)
-# compute angular separation between this object and the Moon (degrees)
-moon_sep = float(apparent.separation_from(moon_apparent).degrees)
+Let's test some objects for Moon separation
+We'll use date of 2025/12/7, time of 22:00:00 civil
 
-# BLOCK BELOW STARTS AT LINE 344
-# Compute current altitude/az at local midnight (approx)            
-# NEW — using earth + wgs84 location + star.observe  
-astrometric = observer.at(t_snapshot).observe(star)
-apparent = astrometric.apparent()
-alt, az, _ = apparent.altaz()
+Let's check the following values reported by my astro_planner
+            REPORTED SEPARATION
+OBJECT      ASTRO_PLANNER       STELLARIUM      KSTARS
+NGC598      72.46               86              86
+NGC2403     39.43               43              43
+NGC7331     102.14              113             113
+NGC1023     57.12               70              70
 
-alt_deg = alt.degrees
-az_deg = az.degrees
+| Object | astro_planner | Stellarium | KStars |
+|:-----|:-------|:------|---------|
+| NGC0598| 72            | 86         | 86     |
+| NGC2403| 39            | 43         | 42     |
+| NGC7331| 102           | 113        | 113    |
+| NGC1023| 57            | 70         | 70     |
 
-# compute angular separation between object and moon (degrees)
-try:
-    moon_sep = float(apparent.separation_from(moon_apparent).degrees) # THIS IS WHERE THE ERROR IS
-except Exception:
-    # fallback: if separation calculation fails, set to None
-    moon_sep = None
 
-# Only report separation if Moon is above horizon at snapshot time
-moon_sep_report = moon_sep if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
+Planner.py
+Line 234 - observer = earth + wgs84.latlon(latitude_degrees=lat, longitude_degrees=lon, elevation_m=elev)
+Line 239 - astrometric_moon = observer.at(t_snapshot).observe(moon)
+Line 326 - astrometric = observer.at(t_snapshot).observe(star)
+Line 400 - ast = observer.at(ts_sample).observe(star)
 
-# ----------------------------
-# Moon separation filter
-# ----------------------------
-min_sep_deg = moon_sep_min  # add to UI or config
-if moon_alt > 0 and moon_sep_deg < min_sep_deg:
-    counts["filtered_moon"] = counts.get("filtered_moon", 0) + 1
-    continue
+Output from moon_test.py
+NGC0598   RA= 23.4625  Dec= 30.6603  Sep=83.454753 deg  (rounded -> 83°)
+NGC2403   RA=114.1242  Dec= 65.6945  Sep=42.341655 deg  (rounded -> 42°)
+NGC7331   RA=339.0146  Dec= 34.4208  Sep=111.221099 deg  (rounded -> 111°)
+NGC1023   RA= 40.1125  Dec= 39.6181  Sep=67.743484 deg  (rounded -> 67°)
+
+NGC0598 from KStars
+JNow:	01h 35m 03s	 30° 45' 20"
+J2000:	01h 33m 34s	 30° 37' 08"
+AzAlt:	 253° 34' 04"	 71° 40' 09"
+
+NGC0598 from OpenNGC.csv
+01:33:50.89	+30:39:36.8
+
+
 
 """

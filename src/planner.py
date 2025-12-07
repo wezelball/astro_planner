@@ -7,7 +7,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 from src.ephemeris import get_default_ephemeris, get_body_radec
 from src.altaz import altaz_from_radec
-from src.moon import moon_alt_az, moon_separation_deg, moon_alt_az_vector, moon_separation_deg_vector
+#from src.moon import moon_alt_az, moon_separation_deg, moon_alt_az_vector, moon_separation_deg_vector
+from src.moon import moon_position_topocentric, moon_separation_deg_from_apparent
 
 # We try to import skyfield; if not available we will raise an informative error at runtime.
 try:
@@ -235,6 +236,7 @@ class Planner:
 
         # Moon position calculations
         # geocentric observer already: use observer.at(t_snapshot).observe(...)
+        """
         moon = eph['moon']   # or eph['moon'] shortcuts
         astrometric_moon = observer.at(t_snapshot).observe(moon)
         moon_apparent = astrometric_moon.apparent()
@@ -244,6 +246,9 @@ class Planner:
         moon_alt, moon_az, _ = moon_apparent.altaz()
         moon_alt_deg = float(moon_alt.degrees)
         moon_az_deg  = float(moon_az.degrees)
+        """
+
+        moon_alt_deg, moon_az_deg, moon_apparent = moon_position_topocentric(eph, observer, t_snapshot)
 
         candidates = []
 
@@ -334,25 +339,14 @@ class Planner:
             # Moon separation (snapshot) — compute now that `apparent` (object) exists
             # ----------------------------
             try:
-                moon_sep_deg = float(apparent.separation_from(moon_apparent).degrees)
+                #moon_sep_deg = float(apparent.separation_from(moon_apparent).degrees)
+                moon_sep_deg = moon_separation_deg_from_apparent(apparent, moon_apparent)
             except Exception:
                 moon_sep_deg = None
 
             # Only report separation if Moon is above horizon at snapshot time
             moon_sep_report = moon_sep_deg if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
             
-            """
-            # compute angular separation between object and moon (degrees)
-            try:
-                moon_sep = float(apparent.separation_from(moon_apparent).degrees)
-            except Exception:
-                # fallback: if separation calculation fails, set to None
-                moon_sep = None
-
-            # Only report separation if Moon is above horizon at snapshot time
-            moon_sep_report = moon_sep if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
-            """
-
             # ----------------------------
             # Moon separation filter
             # ----------------------------
