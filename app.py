@@ -141,12 +141,15 @@ snapshot_time = st.sidebar.time_input(
 )
 
 # Build LOCAL datetime from selected date + time
-local_dt = datetime.combine(date, snapshot_time)
-local_dt = local_dt.replace(tzinfo=LOCAL_TZ)
+#local_dt = datetime.combine(date, snapshot_time)
+#local_dt = local_dt.replace(tzinfo=LOCAL_TZ)
+local_dt = datetime.combine(date, snapshot_time).replace(tzinfo=LOCAL_TZ)
 
 # Convert to UTC
 utc_dt = local_dt.astimezone(ZoneInfo("UTC"))
 
+# Pass UTC date/time components to planner
+date_utc = utc_dt.date()
 hour_utc = utc_dt.hour
 minute_utc = utc_dt.minute
 
@@ -182,7 +185,7 @@ optics = Optics(
 planner = Planner(config, catalog_df, horizon)
 
 results = planner.plan(
-    date=date,
+    date=date_utc,
     optics=optics,          # Optics object we built earlier
     max_magnitude=max_mag,
     min_altitude=min_alt,
