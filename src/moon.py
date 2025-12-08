@@ -15,9 +15,9 @@ Notes:
 from skyfield.api import Star
 import numpy as np
 from skyfield.api import Star, wgs84
-
-# src/moon.py
-from skyfield.api import Star
+#from skyfield.api import Star
+from skyfield.api import Loader
+from skyfield import almanac
 
 def moon_position_topocentric(eph, observer, t_snapshot):
     """Return (moon_alt_deg, moon_az_deg, moon_apparent)"""
@@ -117,4 +117,34 @@ def moon_separation_deg_vector(eph, ts, observer_geocentric, times, star):
     # separation_from supports arrays and returns an Angle array
     sep = star_astrom.separation_from(moon_astrom)
     return np.array(sep.degrees)
+
+
+def moon_phase_info(t_snapshot, eph):
+    """
+    Returns:
+        illuminated_pct  (float 0–100)
+        phase_label      ("Waxing" or "Waning")
+        moon_age_days    (float)
+    """
+    ts = t_snapshot.ts
+
+    # Skyfield moon phase illumination (0–1)
+    illuminated = almanac.fraction_illuminated(eph, 'moon', t_snapshot)
+    illuminated_pct = float(illuminated * 100.0)
+
+    # Determine waxing vs waning:
+    # 0=new → 0.5=full → 1=new
+    phase = almanac.moon_phase(eph, t_snapshot).radians
+    # Phase angle grows from 0 → 2π each cycle
+    # Waxing if 0 < phase < π
+    waxing = (0 < phase < 3.14159265)
+    phase_label = "Waxing" if waxing else "Waning"
+
+    # Moon age in days
+    cycle_len_days = 29.530588
+    moon_age_days = (phase / (2 * 3.14159265)) * cycle_len_days
+
+    return illuminated_pct, phase_label, moon_age_days
+
+
 

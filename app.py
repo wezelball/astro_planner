@@ -8,9 +8,11 @@ from src.catalog import load_openngc_catalog
 from src.horizon import parse_horizon_file
 from src.planner import Planner
 from src.optics import Optics
+from src.moon import moon_phase_info
 import pandas as pd
 from math import isnan
 from src.plotting import plot_sky_polar
+from skyfield.api import Loader
 
 LOCAL_TZ = ZoneInfo("America/New_York")
 
@@ -153,7 +155,26 @@ date_utc = utc_dt.date()
 hour_utc = utc_dt.hour
 minute_utc = utc_dt.minute
 
-st.sidebar.checkbox("Show Clear Sky Clock (if within 48h)", value=False)
+# ------------------------------------------------------
+# Moon Phase Sidebar Widget
+# ------------------------------------------------------
+load = Loader('./skyfield_data')
+ts = load.timescale()
+t_snapshot = ts.utc(
+    date.year, date.month, date.day,
+    utc_dt.hour, utc_dt.minute
+)
+eph = load('de421.bsp')
+
+illum_pct, phase_label, age_days = moon_phase_info(t_snapshot, eph)
+
+st.sidebar.subheader("Moon Phase")
+st.sidebar.write(f"Illumination: **{illum_pct:.1f}%**")
+st.sidebar.write(f"Phase: **{phase_label}**")
+st.sidebar.write(f"Moon age: **{age_days:.1f} days**")
+
+# Circular progress indicator (illumination fraction)
+st.sidebar.progress(illum_pct / 100.0)
 
 # Define selectable types (matches Planner.filter logic)
 #selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
