@@ -8,11 +8,11 @@ from src.catalog import load_openngc_catalog
 from src.horizon import parse_horizon_file
 from src.planner import Planner
 from src.optics import Optics
-from src.moon import moon_phase_info
+from src.moon import moon_phase_info, moon_position_topocentric
 import pandas as pd
 from math import isnan
 from src.plotting import plot_sky_polar
-from skyfield.api import Loader
+from skyfield.api import Loader, wgs84
 
 LOCAL_TZ = ZoneInfo("America/New_York")
 
@@ -172,6 +172,24 @@ st.sidebar.subheader("Moon Phase")
 st.sidebar.write(f"Illumination: **{illum_pct:.1f}%**")
 st.sidebar.write(f"Phase: **{phase_label}**")
 st.sidebar.write(f"Moon age: **{age_days:.1f} days**")
+
+# Moon alt/az at snapshot time
+load = Loader('./skyfield_data')
+ts = load.timescale()
+eph = load('de421.bsp')
+
+t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
+                    utc_dt.hour, utc_dt.minute)
+
+lat = config["location"]["latitude"]
+lon = config["location"]["longitude"]
+elev = config["location"]["elevation_m"]
+observer = eph['earth'] + wgs84.latlon(lat, lon, elevation_m=elev)
+
+moon_alt_deg, moon_az_deg, _ = moon_position_topocentric(eph, observer, t_snapshot)
+
+st.sidebar.write(f"**Moon Alt:** {moon_alt_deg:.1f}°")
+st.sidebar.write(f"**Moon Az:** {moon_az_deg:.1f}°")
 
 # Circular progress indicator (illumination fraction)
 st.sidebar.progress(illum_pct / 100.0)
