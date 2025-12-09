@@ -122,18 +122,15 @@ fov_min = st.sidebar.slider(
     (config['minima']['min_fov_fill'], config['minima']['max_fov_fill'])
 )
 
-# Sidebar date & moon
-st.sidebar.header("Date & Moon")
-date = st.sidebar.date_input("Date to plan (local)")
+# Define selectable types (matches Planner.filter logic)
+#selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
+selectable_types = ["G", "OCl", "PN", "Nebula", "SNR", "GCl"]
+selected_type = st.sidebar.selectbox("Select object type", selectable_types)
 
-# Moon separation slider
-moon_sep_min = st.sidebar.slider(
-    "Minimum Moon Separation (°)",
-    min_value=0,
-    max_value=90,
-    value=30,
-    step=5
-)
+# Sidebar date & moon
+st.sidebar.header("Date/Time")
+
+date = st.sidebar.date_input("Date to plan (local)")
 
 # Select snapshot time (UTC)
 snapshot_time = st.sidebar.time_input(
@@ -155,6 +152,18 @@ date_utc = utc_dt.date()
 hour_utc = utc_dt.hour
 minute_utc = utc_dt.minute
 
+# Sidebar date & moon
+st.sidebar.header("Moon")
+
+# Moon separation slider
+moon_sep_min = st.sidebar.slider(
+    "Minimum Moon Separation (°)",
+    min_value=0,
+    max_value=90,
+    value=30,
+    step=5
+)
+
 # ------------------------------------------------------
 # Moon Phase Sidebar Widget
 # ------------------------------------------------------
@@ -168,7 +177,7 @@ eph = load('de421.bsp')
 
 illum_pct, phase_label, age_days = moon_phase_info(t_snapshot, eph)
 
-st.sidebar.subheader("Moon Phase")
+#st.sidebar.subheader("Moon Phase")
 st.sidebar.write(f"Illumination: **{illum_pct:.1f}%**")
 st.sidebar.write(f"Phase: **{phase_label}**")
 st.sidebar.write(f"Moon age: **{age_days:.1f} days**")
@@ -193,11 +202,6 @@ st.sidebar.write(f"**Moon Az:** {moon_az_deg:.1f}°")
 
 # Circular progress indicator (illumination fraction)
 st.sidebar.progress(illum_pct / 100.0)
-
-# Define selectable types (matches Planner.filter logic)
-#selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
-selectable_types = ["G", "OCl", "PN", "Nebula", "SNR", "GCl"]
-selected_type = st.sidebar.selectbox("Select object type", selectable_types)
 
 # Sidebar sorting
 st.sidebar.header("Sorting")
