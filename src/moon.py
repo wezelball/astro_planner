@@ -18,6 +18,7 @@ from skyfield.api import Star, wgs84
 #from skyfield.api import Star
 from skyfield.api import Loader
 from skyfield import almanac
+from datetime import timedelta
 
 def moon_position_topocentric(eph, observer, t_snapshot):
     """Return (moon_alt_deg, moon_az_deg, moon_apparent)"""
@@ -119,32 +120,105 @@ def moon_separation_deg_vector(eph, ts, observer_geocentric, times, star):
     return np.array(sep.degrees)
 
 
-def moon_phase_info(t_snapshot, eph):
+def moon_phase_info(eph, ts, t_snapshot):
     """
-    Returns:
-        illuminated_pct  (float 0–100)
-        phase_label      ("Waxing" or "Waning")
-        moon_age_days    (float)
+    Return a tuple (illuminated_pct, waxing_bool, phase_name, moon_age_days).
+
+    - eph: loaded skyfield ephemeris (Loader(...)(...))
+    - ts: skyfield timescale (loader.timescale())
+    - t_snapshot: skyfield Time object (ts.utc(...))
+
+    Uses:
+      - almanac.fraction_illuminated(eph, 'moon', t) for illuminated fraction.
+      - almanac.moon_phases(eph) + almanac.find_discrete to find nearest new moon
+        and compute moon age (days).
     """
-    ts = t_snapshot.ts
+    # Illuminated fraction: 0..1
+    try:
+        frac = almanac.fraction_illuminated(eph, 'moon', t_snapshot)
+        illuminated_pct = float(frac * 100.0)
+    except Exception as e:
+        illuminated_pct = None
 
-    # Skyfield moon phase illumination (0–1)
-    illuminated = almanac.fraction_illuminated(eph, 'moon', t_snapshot)
-    illuminated_pct = float(illuminated * 100.0)
+    # Waxing / waning and phase name: use discrete moon phase events
+    phase_func = almanac.moon_phases(eph)
 
-    # Determine waxing vs waning:
-    # 0=new → 0.5=full → 1=new
-    phase = almanac.moon_phase(eph, t_snapshot).radians
-    # Phase angle grows from 0 → 2π each cycle
-    # Waxing if 0 < phase < π
-    waxing = (0 < phase < 3.14159265)
-    phase_label = "Waxing" if waxing else "Waning"
+    # Search a 40-day window before and after t_snapshot to find events.
+    # 30 days is a lunar month ~29.53d; 40 is safe.
+    t0 = ts.utc(t_snapshot.utc_datetime() - timedelta(days=40))
+    t1 = ts.utc(t_snapshot.utc_datetime() + timedelta(days=40))
 
-    # Moon age in days
-    cycle_len_days = 29.530588
-    moon_age_days = (phase / (2 * 3.14159265)) * cycle_len_days
+    times, events = almanac.find_discrete(t0, t1, phase_func)
 
-    return illuminated_pct, phase_label, moon_age_days
+    # events is array of integers: 0=new, 1=first quarter, 2=full, 3=last quarter
+    # Find index of the last event at or before t_snapshot
+    idx = None
+    for i, tt in enumerate(times):
+        if tt.tt > t_snapshot.tt - 1e-9:  # tt.tt is TT; a small tolerance
+            idx = i - 1
+            break
+    if idx is None:
+        idx = len(times) - 1
+
+    if idx < 0:
+        # fallback: use first event
+        idx = 0
+
+    last_event_time = times[idx]
+    last_event_type = int(events[idx])
+
+    # Phase name for the last event and next event
+    phase_names = {0: "New Moon", 1: "First Quarter", 2: "Full Moon", 3: "Last Quarter"}
+    last_phase_name = phase_names.get(last_event_type, "Unknown")
+
+    # Moon age = days since last new moon (if last_event_type==0, simple).
+    # If the last event isn't a New Moon, step backward to find the most recent New Moon in the list.
+    # Find last new-moon time:
+    last_new_idx = None
+    for j in range(idx, -1, -1):
+        if int(events[j]) == 0:
+            last_new_idx = j
+            break
+    if last_new_idx is None:
+        # find forward until you find a new moon; fallback to computing difference to last_event_time
+        # but this is unlikely because our 40-day window should include a new moon.
+        moon_age_days = None
+    else:
+        new_time = times[last_new_idx]
+        # compute age in days using TT seconds difference converted to days (safer via .utc_datetime)
+        dt = t_snapshot.utc_datetime() - new_time.utc_datetime()
+        moon_age_days = dt.total_seconds() / 86400.0
+
+    # waxing/waning: find next major phase after last_new_idx (or compare relative phases)
+    # Simpler approach: find the next phase event after t_snapshot (if it exists),
+    # and if that next event is Full (2) and last was New (0), it's waxing; if next is New, waning.
+    waxing = None
+    # find next event index after t_snapshot
+    next_idx = None
+    for k, tt in enumerate(times):
+        if tt.tt > t_snapshot.tt + 1e-9:
+            next_idx = k
+            break
+    if next_idx is not None:
+        prev_ev = events[idx] if idx >= 0 else None
+        next_ev = events[next_idx]
+        # If we're between New (0) and Full (2) it's waxing; between Full and New it's waning.
+        # More robust: if next_ev in (1,2) and last_event_type in (0,1) -> waxing
+        if int(next_ev) in (1, 2) and int(last_event_type) in (0, 1):
+            waxing = True
+        else:
+            # otherwise consider waning
+            waxing = False
+    else:
+        # fallback: set waxing based on phase angle sign using almanac.moon_phase (radians)
+        try:
+            phase_rad = float(almanac.moon_phase(eph, t_snapshot).radians)
+            # if phase in (0, pi) -> waxing; else waning (same logic as earlier)
+            waxing = (0 < phase_rad < 3.141592653589793)
+        except Exception:
+            waxing = None
+
+    return illuminated_pct, waxing, last_phase_name, moon_age_days
 
 
 

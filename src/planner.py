@@ -236,17 +236,6 @@ class Planner:
 
         # Moon position calculations
         # geocentric observer already: use observer.at(t_snapshot).observe(...)
-        """
-        moon = eph['moon']   # or eph['moon'] shortcuts
-        astrometric_moon = observer.at(t_snapshot).observe(moon)
-        moon_apparent = astrometric_moon.apparent()
-
-        # moon altitude/azimuth (snapshot)
-        # compute moon alt/az at t_snapshot (single time)
-        moon_alt, moon_az, _ = moon_apparent.altaz()
-        moon_alt_deg = float(moon_alt.degrees)
-        moon_az_deg  = float(moon_az.degrees)
-        """
 
         moon_alt_deg, moon_az_deg, moon_apparent = moon_position_topocentric(eph, observer, t_snapshot)
 
@@ -339,7 +328,6 @@ class Planner:
             # Moon separation (snapshot) — compute now that `apparent` (object) exists
             # ----------------------------
             try:
-                #moon_sep_deg = float(apparent.separation_from(moon_apparent).degrees)
                 moon_sep_deg = moon_separation_deg_from_apparent(apparent, moon_apparent)
             except Exception:
                 moon_sep_deg = None
@@ -432,7 +420,7 @@ class Planner:
             obj_out["visible_hours"] = visible_hours
             # keep UI sorting compatibility — add 'mag' field if our catalog uses 'magnitude'
             obj_out["mag"] = obj_out.get("magnitude", obj_out.get("mag", None))
-            obj_out["moon_sep_deg"] = moon_sep_deg if (moon_alt_deg is not None and moon_alt_deg > 0.0) else None
+            obj_out["moon_sep_deg"] = moon_sep_deg
             obj_out["moon_alt_deg"] = moon_alt_deg
 
             candidates.append(obj_out)

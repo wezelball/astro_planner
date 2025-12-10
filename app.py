@@ -8,7 +8,11 @@ from src.catalog import load_openngc_catalog
 from src.horizon import parse_horizon_file
 from src.planner import Planner
 from src.optics import Optics
-from src.moon import moon_phase_info, moon_position_topocentric
+#from src.moon import moon_phase_info, moon_position_topocentric
+from src.moon import (
+    moon_phase_info,
+    moon_position_topocentric,
+)
 import pandas as pd
 from math import isnan
 from src.plotting import plot_sky_polar
@@ -169,23 +173,20 @@ moon_sep_min = st.sidebar.slider(
 # ------------------------------------------------------
 load = Loader('./skyfield_data')
 ts = load.timescale()
+# Use UTC date/time (utc_dt) consistently for the snapshot used for moon calculations
 t_snapshot = ts.utc(
-    date.year, date.month, date.day,
+    utc_dt.year, utc_dt.month, utc_dt.day,
     utc_dt.hour, utc_dt.minute
 )
 eph = load('de421.bsp')
 
-illum_pct, phase_label, age_days = moon_phase_info(t_snapshot, eph)
+illum_pct, waxing, phase_name, age_days = moon_phase_info(eph, ts, t_snapshot)
+waxing_text = "Waxing" if waxing else "Waning"
 
-#st.sidebar.subheader("Moon Phase")
+st.sidebar.subheader("🌙 Moon Info")
 st.sidebar.write(f"Illumination: **{illum_pct:.1f}%**")
-st.sidebar.write(f"Phase: **{phase_label}**")
-st.sidebar.write(f"Moon age: **{age_days:.1f} days**")
-
-# Moon alt/az at snapshot time
-load = Loader('./skyfield_data')
-ts = load.timescale()
-eph = load('de421.bsp')
+st.sidebar.write(f"Phase: **{phase_name} ({waxing_text})**")
+st.sidebar.write(f"Age: **{age_days:.1f} days**")
 
 t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
                     utc_dt.hour, utc_dt.minute)
@@ -193,9 +194,22 @@ t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
 lat = config["location"]["latitude"]
 lon = config["location"]["longitude"]
 elev = config["location"]["elevation_m"]
-observer = eph['earth'] + wgs84.latlon(lat, lon, elevation_m=elev)
+#observer = eph['earth'] + wgs84.latlon(lat, lon, elevation_m=elev)
+
+observer = eph['earth'] + wgs84.latlon(
+    config["location"]["latitude"],
+    config["location"]["longitude"],
+    elevation_m=config["location"]["elevation_m"]
+)
 
 moon_alt_deg, moon_az_deg, _ = moon_position_topocentric(eph, observer, t_snapshot)
+
+#moon_alt_deg, moon_az_deg = get_moon_alt_az(
+#    t_snapshot,
+#    config["location"]["latitude"],
+#    config["location"]["longitude"],
+#    config["location"]["elevation_m"]
+#)
 
 st.sidebar.write(f"**Moon Alt:** {moon_alt_deg:.1f}°")
 st.sidebar.write(f"**Moon Az:** {moon_az_deg:.1f}°")
