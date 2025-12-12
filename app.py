@@ -79,10 +79,8 @@ num_objects = len(object_list)
 #num_with_size = sum(1 for o in object_list if o["size_deg"] is not None)
 #num_with_mag  = sum(1 for o in object_list if o["magnitude"] is not None)
 
-#st.sidebar.write("Catalog summary:")
-st.sidebar.write(f"Total objects loaded: {num_objects}")
-#st.sidebar.write(f"Objects with size: {num_with_size}")
-#st.sidebar.write(f"Objects with V-magnitude: {num_with_mag}")
+#st.sidebar.write(f"Total objects loaded: {num_objects}")
+
 # -------------------------------------------------------
 # Debug: check how many OpenNGC objects have size data
 # -------------------------------------------------------
@@ -95,7 +93,7 @@ config_path = "config/config.toml"
 config = load_config_example(config_path)
 
 st.sidebar.header("Configuration")
-st.sidebar.write(f"Location: {config['location']['latitude']}, {config['location']['longitude']} (elev {config['location']['elevation_m']} m)")
+#st.sidebar.write(f"Location: {config['location']['latitude']}, {config['location']['longitude']} (elev {config['location']['elevation_m']} m)")
 
 # Select optics/camera
 optics_names = [o['name'] for o in config['optics']]
@@ -184,9 +182,6 @@ illum_pct, waxing, phase_name, age_days = moon_phase_info(eph, ts, t_snapshot)
 waxing_text = "Waxing" if waxing else "Waning"
 
 st.sidebar.subheader("🌙 Moon Info")
-st.sidebar.write(f"Illumination: **{illum_pct:.1f}%**")
-st.sidebar.write(f"Phase: **{phase_name} ({waxing_text})**")
-st.sidebar.write(f"Age: **{age_days:.1f} days**")
 
 t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
                     utc_dt.hour, utc_dt.minute)
@@ -204,18 +199,55 @@ observer = eph['earth'] + wgs84.latlon(
 
 moon_alt_deg, moon_az_deg, _ = moon_position_topocentric(eph, observer, t_snapshot)
 
-#moon_alt_deg, moon_az_deg = get_moon_alt_az(
-#    t_snapshot,
-#    config["location"]["latitude"],
-#    config["location"]["longitude"],
-#    config["location"]["elevation_m"]
-#)
+# ---------------------------
+#  Observer Group
+# ---------------------------
+with st.sidebar.expander("📍 Observer", expanded=True):
+    col1, col2 = st.columns(2)
+    col1.markdown(f"**Lat**<br><span style='font-size:14px'>{config['location']['latitude']:.4f}°</span>", unsafe_allow_html=True)
+    col2.markdown(f"**Lon**<br><span style='font-size:14px'>{config['location']['longitude']:.4f}°</span>", unsafe_allow_html=True)
 
-st.sidebar.write(f"**Moon Alt:** {moon_alt_deg:.1f}°")
-st.sidebar.write(f"**Moon Az:** {moon_az_deg:.1f}°")
+    st.markdown(f"**Elevation**<br><span style='font-size:14px'>{config['location']['elevation_m']} m</span>", unsafe_allow_html=True)
 
-# Circular progress indicator (illumination fraction)
-st.sidebar.progress(illum_pct / 100.0)
+# ---------------------------
+#  Moon Group
+# ---------------------------
+with st.sidebar.expander("🌙 Moon", expanded=True):
+
+    # Phase %  Progress Bar
+    st.write(f"**Phase:** {illum_pct:.1f}% illuminated")
+    st.progress(illum_pct / 100.0)
+
+    # Age + Illum
+    col1, col2 = st.columns(2)
+    col1.markdown(
+        f"**Age**<br><span style='font-size:14px'>{age_days:.2f} d</span>",
+        unsafe_allow_html=True,
+    )
+    col2.markdown(
+        f"**Illum**<br><span style='font-size:14px'>{illum_pct:.1f}%</span>",
+        unsafe_allow_html=True,
+    )
+
+    # Alt + Az
+    col3, col4 = st.columns(2)
+    col3.markdown(
+        f"**Alt**<br><span style='font-size:14px'>{moon_alt_deg:.1f}°</span>",
+        unsafe_allow_html=True,
+    )
+    col4.markdown(
+        f"**Az**<br><span style='font-size:14px'>{moon_az_deg:.1f}°</span>",
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------
+#  Sun Group
+# ---------------------------
+with st.sidebar.expander("☀️ Sun", expanded=False):
+    # Placeholder for future sunrise/sunset values
+    # You can fill these in when we add the feature
+    st.caption("Astronomical sunrise/sunset coming soon…")
 
 # Sidebar sorting
 st.sidebar.header("Sorting")
@@ -282,7 +314,6 @@ if not results.empty:
     st.dataframe(df_left_justified, width="stretch")
 else:
     st.write("No candidates found with current filters.")
-
 
 #st.info(
 #    "This is an MVP skeleton. The src modules contain the structure and placeholder functions.\n"
