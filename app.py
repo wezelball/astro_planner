@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta, timezone
 from zoneinfo import ZoneInfo   # Python 3.9+
 from src.config_loader import load_config_example
 #from src.catalog import load_catalog_sample
@@ -17,6 +17,7 @@ import pandas as pd
 from math import isnan
 from src.plotting import plot_sky_polar
 from skyfield.api import Loader, wgs84
+from skyfield import almanac
 
 LOCAL_TZ = ZoneInfo("America/New_York")
 
@@ -68,6 +69,15 @@ def load_opengc_catalog(path="data/NGC.csv"):
         })
 
     return objects
+
+# Format times to local timezone for display (if found)
+def _format_tt_local(tt):
+    if tt is None:
+        return "N/A"
+    # convert Skyfield Time to timezone-aware UTC datetime, then to LOCAL_TZ
+    dt_utc = tt.utc_datetime().replace(tzinfo=timezone.utc)
+    dt_local = dt_utc.astimezone(LOCAL_TZ)
+    return dt_local.strftime("%Y-%m-%d %H:%M")    
 
 # Load once
 object_list = load_opengc_catalog()
@@ -245,9 +255,65 @@ with st.sidebar.expander("🌙 Moon", expanded=True):
 #  Sun Group
 # ---------------------------
 with st.sidebar.expander("☀️ Sun", expanded=False):
-    # Placeholder for future sunrise/sunset values
-    # You can fill these in when we add the feature
-    st.caption("Astronomical sunrise/sunset coming soon…")
+    # Topos (lat/lon) and geocentric observer
+    topos = wgs84.latlon(
+        config["location"]["latitude"],
+        config["location"]["longitude"],
+        elevation_m=config["location"]["elevation_m"]
+    )
+    observer = eph['earth'] + topos
+
+    # Topocentric sun position at snapshot
+    sun = eph['sun']
+    sun_astrom = observer.at(t_snapshot).observe(sun).apparent()
+    sun_alt, sun_az, _ = sun_astrom.altaz()
+    sun_alt_deg = float(sun_alt.degrees)
+    sun_az_deg = float(sun_az.degrees)
+
+    # Display compact alt/az
+    col1, col2 = st.columns(2)
+    col1.markdown(f"**Alt**<br><span style='font-size:14px'>{sun_alt_deg:.1f}°</span>", unsafe_allow_html=True)
+    col2.markdown(f"**Az**<br><span style='font-size:14px'>{sun_az_deg:.1f}°</span>", unsafe_allow_html=True)
+
+    # Use the Topos (not the geocentric 'observer') with almanac
+    f = almanac.sunrise_sunset(eph, topos)
+
+    # Search window: from yesterday to +2 days (safe)
+    t0 = ts.utc((utc_dt - timedelta(days=1)).year,
+                (utc_dt - timedelta(days=1)).month,
+                (utc_dt - timedelta(days=1)).day)
+    t1 = ts.utc((utc_dt + timedelta(days=2)).year,
+                (utc_dt + timedelta(days=2)).month,
+                (utc_dt + timedelta(days=2)).day)
+
+    times, events = almanac.find_discrete(t0, t1, f)
+
+    # events: True = sunrise transition (Sun up after), False = sunset transition (Sun down after)
+    next_sunrise_t = None
+    next_sunset_t  = None
+
+    for tt, ev in zip(times, events):
+        if tt.tt <= t_snapshot.tt:
+            continue
+        if ev and next_sunrise_t is None:
+            next_sunrise_t = tt
+        if (not ev) and next_sunset_t is None:
+            next_sunset_t = tt
+        if next_sunrise_t is not None and next_sunset_t is not None:
+            break
+
+    
+    # Format Skyfield Time to local datetime string
+    sunrise_str = _format_tt_local(next_sunrise_t)
+    sunset_str  = _format_tt_local(next_sunset_t)
+
+    # Display sunrise/sunset in two columns
+    col3, col4 = st.columns(2)
+    col3.markdown(f"**Sunrise**<br><span style='font-size:13px'>{sunrise_str}</span>", unsafe_allow_html=True)
+    col4.markdown(f"**Sunset**<br><span style='font-size:13px'>{sunset_str}</span>", unsafe_allow_html=True)
+
+    st.caption("Sun times shown in local civil time")
+    
 
 # Sidebar sorting
 st.sidebar.header("Sorting")

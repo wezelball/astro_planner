@@ -45,3 +45,34 @@ Note that the moon_test.py script values agree very closely with Stellarium and 
 values do not. ChatGPT is getting really confused, so I'm going to do a close comparison between
 programs to see if I can spot the problem.
 
+
+2025/12/12
+
+times, events = almanac.find_discrete(t0, t1, f)
+
+    # events: True = sunrise transition (Sun up after), False = sunset transition (Sun down after)
+    next_sunrise_t = None
+    next_sunset_t  = None
+
+    for tt, ev in zip(times, events):
+        if tt.tt <= t_snapshot.tt:
+            continue
+        if ev and next_sunrise_t is None:
+            next_sunrise_t = tt
+        if (not ev) and next_sunset_t is None:
+            next_sunset_t = tt
+        if next_sunrise_t is not None and next_sunset_t is not None:
+            break
+
+    # Format Skyfield Time to local datetime string
+    def _format_tt_local(tt):
+        if tt is None:
+            return "N/A"
+        # convert Skyfield Time to timezone-aware UTC datetime, then to LOCAL_TZ
+        from datetime import timezone
+        dt_utc = tt.utc_datetime().replace(tzinfo=timezone.utc)
+        dt_local = dt_utc.astimezone(LOCAL_TZ)
+        return dt_local.strftime("%Y-%m-%d %H:%M")
+
+    sunrise_str = _format_tt_local(next_sunrise_t)
+    sunset_str  = _format_tt_local(next_sunset_t)
