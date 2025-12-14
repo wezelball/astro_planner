@@ -3,7 +3,6 @@ from datetime import datetime, date, time, timedelta, timezone
 from zoneinfo import ZoneInfo   # Python 3.9+
 from src.config_loader import load_config_example
 from src.catalog import load_openngc_catalog
-
 from src.horizon import parse_horizon_file
 from src.planner import Planner
 from src.optics import Optics
@@ -176,8 +175,6 @@ eph = load('de421.bsp')
 
 illum_pct, waxing, phase_name, age_days = moon_phase_info(eph, ts, t_snapshot)
 waxing_text = "Waxing" if waxing else "Waning"
-
-st.sidebar.subheader("🌙 Moon Info")
 
 t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
                     utc_dt.hour, utc_dt.minute)
