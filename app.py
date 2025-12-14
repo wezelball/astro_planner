@@ -2,13 +2,11 @@ import streamlit as st
 from datetime import datetime, date, time, timedelta, timezone
 from zoneinfo import ZoneInfo   # Python 3.9+
 from src.config_loader import load_config_example
-#from src.catalog import load_catalog_sample
 from src.catalog import load_openngc_catalog
 
 from src.horizon import parse_horizon_file
 from src.planner import Planner
 from src.optics import Optics
-#from src.moon import moon_phase_info, moon_position_topocentric
 from src.moon import (
     moon_phase_info,
     moon_position_topocentric,
@@ -86,14 +84,6 @@ object_list = load_opengc_catalog()
 # Debug: check how many OpenNGC objects have size data
 # -------------------------------------------------------
 num_objects = len(object_list)
-#num_with_size = sum(1 for o in object_list if o["size_deg"] is not None)
-#num_with_mag  = sum(1 for o in object_list if o["magnitude"] is not None)
-
-#st.sidebar.write(f"Total objects loaded: {num_objects}")
-
-# -------------------------------------------------------
-# Debug: check how many OpenNGC objects have size data
-# -------------------------------------------------------
 
 st.set_page_config(page_title="Astro Planner", layout="wide")
 st.title("Astro Planner — Night Target Selector (MVP)")
@@ -103,7 +93,6 @@ config_path = "config/config.toml"
 config = load_config_example(config_path)
 
 st.sidebar.header("Configuration")
-#st.sidebar.write(f"Location: {config['location']['latitude']}, {config['location']['longitude']} (elev {config['location']['elevation_m']} m)")
 
 # Select optics/camera
 optics_names = [o['name'] for o in config['optics']]
@@ -135,7 +124,6 @@ fov_min = st.sidebar.slider(
 )
 
 # Define selectable types (matches Planner.filter logic)
-#selectable_types = ["G", "RfN", "HII", "OCl", "PN", "Neb", "Cl+N", "SNR", "EmN", "GCl"]
 selectable_types = ["G", "OCl", "PN", "Nebula", "SNR", "GCl"]
 selected_type = st.sidebar.selectbox("Select object type", selectable_types)
 
@@ -152,8 +140,6 @@ snapshot_time = st.sidebar.time_input(
 )
 
 # Build LOCAL datetime from selected date + time
-#local_dt = datetime.combine(date, snapshot_time)
-#local_dt = local_dt.replace(tzinfo=LOCAL_TZ)
 local_dt = datetime.combine(date, snapshot_time).replace(tzinfo=LOCAL_TZ)
 
 # Convert to UTC
@@ -199,7 +185,6 @@ t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
 lat = config["location"]["latitude"]
 lon = config["location"]["longitude"]
 elev = config["location"]["elevation_m"]
-#observer = eph['earth'] + wgs84.latlon(lat, lon, elevation_m=elev)
 
 observer = eph['earth'] + wgs84.latlon(
     config["location"]["latitude"],
@@ -249,7 +234,6 @@ with st.sidebar.expander("🌙 Moon", expanded=True):
         f"**Az**<br><span style='font-size:14px'>{moon_az_deg:.1f}°</span>",
         unsafe_allow_html=True,
     )
-
 
 # ---------------------------
 #  Sun Group
@@ -388,8 +372,3 @@ if not results.empty:
     st.dataframe(df_left_justified, width="stretch")
 else:
     st.write("No candidates found with current filters.")
-
-#st.info(
-#    "This is an MVP skeleton. The src modules contain the structure and placeholder functions.\n"
-#    "Next steps: implement precise ephemeris calculations using Skyfield, visibility sampling, scoring, and Streamlit UI refinements."
-#)

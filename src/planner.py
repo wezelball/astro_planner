@@ -7,7 +7,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 from src.ephemeris import get_default_ephemeris, get_body_radec
 from src.altaz import altaz_from_radec
-#from src.moon import moon_alt_az, moon_separation_deg, moon_alt_az_vector, moon_separation_deg_vector
 from src.moon import moon_position_topocentric, moon_separation_deg_from_apparent
 
 # We try to import skyfield; if not available we will raise an informative error at runtime.
@@ -103,8 +102,6 @@ class Planner:
         # convert RA H:M:S to degrees (RA) and Dec D:M:S to degrees (Dec)
         ra_hms = row.get('ra_hms')
         dec_dms = row.get('dec_dms')
-        # For RA, skyfield expects hours or degrees; we'll convert to degrees
-        # For dec, use degrees
     
     def hms_to_deg(hms):
         parts = [p for p in str(hms).split(':')]
@@ -268,15 +265,12 @@ class Planner:
 
             # Normalize catalog type string
             obj_type = obj.get("type", "").strip()
-            #print("Object type:", obj_type, "Name:", obj.get("name"))   # DEBUG
 
             if obj_type is None:
-                #print("obj_type is None")
                 continue  # skip objects without type
 
             # Skip types that are ignored
             if obj_type not in allowed_types:
-                #print("obj_type is not in allowed types")
                 continue
 
             # Apply single-choice filter

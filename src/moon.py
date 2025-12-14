@@ -219,6 +219,3 @@ def moon_phase_info(eph, ts, t_snapshot):
             waxing = None
 
     return illuminated_pct, waxing, last_phase_name, moon_age_days
-
-
-
