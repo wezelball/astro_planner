@@ -275,8 +275,10 @@ with st.sidebar.expander("☀️ Sun", expanded=False):
     col1.markdown(f"**Alt**<br><span style='font-size:14px'>{sun_alt_deg:.1f}°</span>", unsafe_allow_html=True)
     col2.markdown(f"**Az**<br><span style='font-size:14px'>{sun_az_deg:.1f}°</span>", unsafe_allow_html=True)
 
-    # Use the Topos (not the geocentric 'observer') with almanac
-    f = almanac.sunrise_sunset(eph, topos)
+    # ----------------------------------------
+    # Astronomical dusk / dawn (Sun at -18°)
+    # ----------------------------------------
+    f = almanac.dark_twilight_day(eph, topos)
 
     # Search window: from yesterday to +2 days (safe)
     t0 = ts.utc((utc_dt - timedelta(days=1)).year,
@@ -286,33 +288,39 @@ with st.sidebar.expander("☀️ Sun", expanded=False):
                 (utc_dt + timedelta(days=2)).month,
                 (utc_dt + timedelta(days=2)).day)
 
-    times, events = almanac.find_discrete(t0, t1, f)
+    times, states = almanac.find_discrete(t0, t1, f)
 
-    # events: True = sunrise transition (Sun up after), False = sunset transition (Sun down after)
-    next_sunrise_t = None
-    next_sunset_t  = None
+    next_astro_sunset_t = None   # entry into astronomical night
+    next_astro_sunrise_t = None  # exit from astronomical night
 
-    for tt, ev in zip(times, events):
+    for tt, state in zip(times, states):
         if tt.tt <= t_snapshot.tt:
             continue
-        if ev and next_sunrise_t is None:
-            next_sunrise_t = tt
-        if (not ev) and next_sunset_t is None:
-            next_sunset_t = tt
-        if next_sunrise_t is not None and next_sunset_t is not None:
+
+        # state == 0 means astronomical night
+        if state == 0 and next_astro_sunset_t is None:
+            next_astro_sunset_t = tt
+
+        if state != 0 and next_astro_sunrise_t is None and next_astro_sunset_t is not None:
+            next_astro_sunrise_t = tt
+
+        if next_astro_sunset_t is not None and next_astro_sunrise_t is not None:
             break
 
-    
-    # Format Skyfield Time to local datetime string
-    sunrise_str = _format_tt_local(next_sunrise_t)
-    sunset_str  = _format_tt_local(next_sunset_t)
+    astro_sunset_str  = _format_tt_local(next_astro_sunset_t)
+    astro_sunrise_str = _format_tt_local(next_astro_sunrise_t)
 
-    # Display sunrise/sunset in two columns
     col3, col4 = st.columns(2)
-    col3.markdown(f"**Sunrise**<br><span style='font-size:13px'>{sunrise_str}</span>", unsafe_allow_html=True)
-    col4.markdown(f"**Sunset**<br><span style='font-size:13px'>{sunset_str}</span>", unsafe_allow_html=True)
+    col3.markdown(
+        f"**Astro Dusk**<br><span style='font-size:13px'>{astro_sunset_str}</span>",
+        unsafe_allow_html=True,
+    )
+    col4.markdown(
+        f"**Astro Dawn**<br><span style='font-size:13px'>{astro_sunrise_str}</span>",
+        unsafe_allow_html=True,
+    )
 
-    st.caption("Sun times shown in local civil time")
+    st.caption("Astronomical twilight (Sun at −18°), local time")
     
 
 # Sidebar sorting
