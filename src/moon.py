@@ -13,8 +13,6 @@ Notes:
 """
 
 import numpy as np
-from skyfield.api import Star, wgs84
-from skyfield.api import Loader
 from skyfield import almanac
 from datetime import timedelta
 

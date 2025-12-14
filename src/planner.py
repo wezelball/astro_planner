@@ -1,22 +1,19 @@
 # src/planner.py
 import math
 import numpy as np
-from skyfield import almanac
-from skyfield.api import Loader, Topos, Star, wgs84
+from skyfield.api import Loader, Topos, Star, wgs84, load
 import pandas as pd
 from datetime import datetime, timedelta
-from src.ephemeris import get_default_ephemeris, get_body_radec
-from src.altaz import altaz_from_radec
 from src.moon import moon_position_topocentric, moon_separation_deg_from_apparent
 
 # We try to import skyfield; if not available we will raise an informative error at runtime.
 try:
-    from skyfield.api import Loader, Topos, load
     from skyfield.almanac import dark_twilight_day
     SKYFIELD_AVAILABLE = True
 except Exception as e:
     SKYFIELD_AVAILABLE = False
     _SKYFIELD_IMPORT_ERROR = e
+
 
 ts = load.timescale()
 eph = load('de421.bsp')
@@ -193,10 +190,6 @@ class Planner:
         pandas.DataFrame
             Candidate targets with columns: name, type, mag, size_deg, alt_deg, az_deg, fov_fill, visible_hours
         """
-        import pandas as pd
-        import numpy as np
-        from datetime import datetime, timedelta
-        from skyfield.api import Loader, Topos, Star
 
         if object_list is None:
             print("No catalog objects provided!")
