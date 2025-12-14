@@ -6,9 +6,6 @@ def plot_sky_polar(df, horizon):
     Polar sky plot with object positions and shaded local horizon.
     Azimuth = theta, Altitude = r
     """
-
-    import plotly.graph_objects as go
-
     fig = go.Figure()
 
     # Bigger default figure and looser margins so outer labels are not clipped

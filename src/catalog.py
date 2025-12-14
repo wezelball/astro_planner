@@ -14,6 +14,7 @@ def load_openngc_catalog(path: str) -> pd.DataFrame:
     df = pd.read_csv(path, sep=';', dtype=str)
 
     # --- RA/Dec conversion ---
+    
     def parse_ra(ra_str):
         try:
             return Angle(ra_str, unit="hourangle").degree

@@ -54,7 +54,6 @@ class Optics:
         scale_y = 206.265 * (self.sensor_height_mm * 1000.0 / self.pixel_height) / self.effective_focal_length_mm
         return (scale_x, scale_y)
 
-
     # ---------------------------------------------------------
     # FOV in degrees and arcseconds per pixel
     # ---------------------------------------------------------

@@ -12,10 +12,8 @@ Notes:
 - star should be a skyfield.api.Star object (or any Skyfield position-like object)
 """
 
-from skyfield.api import Star
 import numpy as np
 from skyfield.api import Star, wgs84
-#from skyfield.api import Star
 from skyfield.api import Loader
 from skyfield import almanac
 from datetime import timedelta
