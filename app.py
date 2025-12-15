@@ -114,6 +114,7 @@ topos = wgs84.latlon(lat, lon, elevation_m=elev)
 # used for alt/az, Moon, Sun
 observer = eph['earth'] + topos
 
+
 # -------------------------------------------------------
 # Sidebar: configuration & filters
 # -------------------------------------------------------
@@ -169,6 +170,13 @@ date_utc = utc_dt.date()
 hour_utc = utc_dt.hour
 minute_utc = utc_dt.minute
 
+# Use UTC date/time (utc_dt) consistently for the snapshot used for moon calculations
+t_snapshot = ts.utc(
+    utc_dt.year, utc_dt.month, utc_dt.day,
+    utc_dt.hour, utc_dt.minute
+)
+
+
 # Sidebar date & moon
 st.sidebar.header("Moon")
 
@@ -185,18 +193,8 @@ moon_sep_min = st.sidebar.slider(
 # Moon Phase Sidebar Widget
 # ------------------------------------------------------
 
-# Use UTC date/time (utc_dt) consistently for the snapshot used for moon calculations
-t_snapshot = ts.utc(
-    utc_dt.year, utc_dt.month, utc_dt.day,
-    utc_dt.hour, utc_dt.minute
-)
-
 illum_pct, waxing, phase_name, age_days = moon_phase_info(eph, ts, t_snapshot)
 waxing_text = "Waxing" if waxing else "Waning"
-
-t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
-                    utc_dt.hour, utc_dt.minute)
-
 moon_alt_deg, moon_az_deg, _ = moon_position_topocentric(eph, observer, t_snapshot)
 
 # ---------------------------
