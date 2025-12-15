@@ -76,6 +76,10 @@ def _format_tt_local(tt):
     dt_local = dt_utc.astimezone(LOCAL_TZ)
     return dt_local.strftime("%Y-%m-%d %H:%M")    
 
+# -------------------------------------------------------
+# App setup
+# -------------------------------------------------------
+
 # Load once
 object_list = load_opengc_catalog()
 
@@ -97,7 +101,10 @@ st.sidebar.header("Configuration")
 optics_names = [o['name'] for o in config['optics']]
 optics_choice = st.sidebar.selectbox("Select optics/camera:", optics_names)
 
-# Sidebar filters
+# -------------------------------------------------------
+# Sidebar: configuration & filters
+# -------------------------------------------------------
+
 st.sidebar.header("Filters")
 
 max_mag = st.sidebar.slider(
@@ -325,9 +332,14 @@ optics = Optics(
     focal_reducer=optics_dict.get('focal_reducer', 1.0)
 )
 
+# -------------------------------------------------------
+# Planning & results
+# -------------------------------------------------------
+
 # Instantiate planner
 planner = Planner(config, catalog_df, horizon)
 
+# Call the heart of the application, Planner.plan()
 results = planner.plan(
     date=date_utc,
     optics=optics,          # Optics object we built earlier

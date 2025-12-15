@@ -14,7 +14,6 @@ except Exception as e:
     SKYFIELD_AVAILABLE = False
     _SKYFIELD_IMPORT_ERROR = e
 
-
 ts = load.timescale()
 eph = load('de421.bsp')
 earth = eph['earth']
@@ -184,6 +183,16 @@ class Planner:
             Min/max fraction of FOV that object should fill.
         object_list : list of dict
             Catalog objects.
+        selected_type : TODO
+            TODO
+        hour_utc : TODO
+            TODO
+        minute_utc : TODO
+            TODO
+        horizon _ TODO
+            TODO
+        moon_sep_min : TODO
+            TODO
 
         Returns
         -------
@@ -383,7 +392,7 @@ class Planner:
             visible_hours = visible_count * dt_minutes / 60.0
 
             # ----------------------------
-            # Append filtered object
+            # Append filtered object to candidates dataframe
             # ----------------------------
             counts["passed"] += 1
 
