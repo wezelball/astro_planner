@@ -200,7 +200,7 @@ moon_alt_deg, moon_az_deg, _ = moon_position_topocentric(eph, observer, t_snapsh
 # ---------------------------
 #  Observer Group
 # ---------------------------
-with st.sidebar.expander("📍 Observer", expanded=True):
+with st.sidebar.expander("📍 Observer", expanded=False):
     col1, col2 = st.columns(2)
     col1.markdown(f"**Lat**<br><span style='font-size:14px'>{config['location']['latitude']:.4f}°</span>", unsafe_allow_html=True)
     col2.markdown(f"**Lon**<br><span style='font-size:14px'>{config['location']['longitude']:.4f}°</span>", unsafe_allow_html=True)
@@ -241,7 +241,7 @@ with st.sidebar.expander("🌙 Moon", expanded=True):
 # ---------------------------
 #  Sun Group
 # ---------------------------
-with st.sidebar.expander("☀️ Sun", expanded=False):
+with st.sidebar.expander("☀️ Sun", expanded=True):
 
     # Topocentric sun position at snapshot
     sun = eph['sun']
