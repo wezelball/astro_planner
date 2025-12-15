@@ -101,6 +101,19 @@ st.sidebar.header("Configuration")
 optics_names = [o['name'] for o in config['optics']]
 optics_choice = st.sidebar.selectbox("Select optics/camera:", optics_names)
 
+# Topos (lat/lon) and geocentric observer
+lat = config["location"]["latitude"]
+lon = config["location"]["longitude"]
+elev = config["location"]["elevation_m"]
+load = Loader('./skyfield_data')
+ts = load.timescale()
+eph = load('de421.bsp')
+
+# Used for almanac functions
+topos = wgs84.latlon(lat, lon, elevation_m=elev)
+# used for alt/az, Moon, Sun
+observer = eph['earth'] + topos
+
 # -------------------------------------------------------
 # Sidebar: configuration & filters
 # -------------------------------------------------------
@@ -171,30 +184,18 @@ moon_sep_min = st.sidebar.slider(
 # ------------------------------------------------------
 # Moon Phase Sidebar Widget
 # ------------------------------------------------------
-load = Loader('./skyfield_data')
-ts = load.timescale()
+
 # Use UTC date/time (utc_dt) consistently for the snapshot used for moon calculations
 t_snapshot = ts.utc(
     utc_dt.year, utc_dt.month, utc_dt.day,
     utc_dt.hour, utc_dt.minute
 )
-eph = load('de421.bsp')
 
 illum_pct, waxing, phase_name, age_days = moon_phase_info(eph, ts, t_snapshot)
 waxing_text = "Waxing" if waxing else "Waning"
 
 t_snapshot = ts.utc(utc_dt.year, utc_dt.month, utc_dt.day,
                     utc_dt.hour, utc_dt.minute)
-
-lat = config["location"]["latitude"]
-lon = config["location"]["longitude"]
-elev = config["location"]["elevation_m"]
-
-observer = eph['earth'] + wgs84.latlon(
-    config["location"]["latitude"],
-    config["location"]["longitude"],
-    elevation_m=config["location"]["elevation_m"]
-)
 
 moon_alt_deg, moon_az_deg, _ = moon_position_topocentric(eph, observer, t_snapshot)
 
@@ -243,13 +244,6 @@ with st.sidebar.expander("🌙 Moon", expanded=True):
 #  Sun Group
 # ---------------------------
 with st.sidebar.expander("☀️ Sun", expanded=False):
-    # Topos (lat/lon) and geocentric observer
-    topos = wgs84.latlon(
-        config["location"]["latitude"],
-        config["location"]["longitude"],
-        elevation_m=config["location"]["elevation_m"]
-    )
-    observer = eph['earth'] + topos
 
     # Topocentric sun position at snapshot
     sun = eph['sun']
