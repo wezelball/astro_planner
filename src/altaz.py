@@ -1,3 +1,21 @@
+"""
+altaz.py
+Alt/Az coordinate utilities.
+
+This module provides low-level astronomical coordinate transformations,
+including conversion from equatorial coordinates (RA/Dec) to horizontal
+coordinates (Altitude/Azimuth), along with related quantities such as
+airmass and parallactic angle.
+
+All angles are in degrees unless otherwise stated.
+
+Conventions:
+- Longitude: positive East of Greenwich
+- Latitude: positive North
+- Azimuth: 0° = North, increasing eastward (astronomical convention)
+- Time: UTC
+"""
+
 import numpy as np
 from astropy.time import Time
 from math import sin, cos, asin, atan2, radians, degrees, sqrt, tan
@@ -7,11 +25,27 @@ from math import sin, cos, asin, atan2, radians, degrees, sqrt, tan
 # -----------------------------------------------------------------------------
 
 def wrap_angle_deg(angle):
-    """Wrap angle to the range [0, 360)."""
+    """
+    Wrap an angle to the range [0, 360).
+
+    Args:
+        angle (float): Angle in degrees.
+
+    Returns:
+        float: Wrapped angle in degrees.
+    """
     return angle % 360.0
 
 def wrap_angle_pm180(angle):
-    """Wrap angle to [-180, +180)."""
+    """
+    Wrap an angle to the range [-180, +180).
+
+    Args:
+        angle (float): Angle in degrees.
+
+    Returns:
+        float: Wrapped angle in degrees.
+    """
     a = angle % 360.0
     return a - 360.0 if a >= 180.0 else a
 
@@ -21,10 +55,15 @@ def wrap_angle_pm180(angle):
 
 def compute_local_sidereal_time(jd, longitude_deg):
     """
-    Compute Local Sidereal Time (LST) using IAU 2006 expressions.
+    Compute Local Sidereal Time (LST) using the IAU 2006 expression.
 
-    jd : float (Julian Date)
-    longitude_deg : observer longitude, +East of Greenwich
+    Args:
+        jd (float): Julian Date (UTC).
+        longitude_deg (float): Observer longitude in degrees
+            (positive East of Greenwich).
+
+    Returns:
+        float: Local Sidereal Time in degrees [0, 360).
     """
     T = (jd - 2451545.0) / 36525.0
 
@@ -43,11 +82,20 @@ def compute_local_sidereal_time(jd, longitude_deg):
 
 def radec_to_altaz(ra_deg, dec_deg, time_utc, lat_deg, lon_deg):
     """
-    Convert RA/Dec to Alt/Az for a given observer location & time.
+    Convert equatorial coordinates (RA/Dec) to horizontal coordinates (Alt/Az).
 
-    time_utc : string or astropy Time
-    lon_deg  : geographic longitude (+E)
-    lat_deg  : geographic latitude (+N)
+    Args:
+        ra_deg (float): Right Ascension in degrees.
+        dec_deg (float): Declination in degrees.
+        time_utc (str or astropy.time.Time): Observation time (UTC).
+        lat_deg (float): Observer latitude in degrees (+North).
+        lon_deg (float): Observer longitude in degrees (+East).
+
+    Returns:
+        tuple:
+            alt_deg (float): Altitude in degrees.
+            az_deg (float): Azimuth in degrees (0° = North, increasing East).
+            ha_deg (float): Hour angle in degrees (-180 to +180).
     """
 
     # Ensure astropy Time
@@ -86,8 +134,15 @@ def radec_to_altaz(ra_deg, dec_deg, time_utc, lat_deg, lon_deg):
 
 def airmass_kasten_young(alt_deg):
     """
-    Kasten & Young 1989 airmass model.
-    Input altitude in degrees.
+    Compute airmass using the Kasten & Young (1989) model.
+
+    Valid for altitudes above the horizon.
+
+    Args:
+        alt_deg (float): Altitude in degrees.
+
+    Returns:
+        float: Airmass value, or infinity if altitude ≤ 0°.
     """
     if alt_deg <= 0:
         return np.inf
@@ -97,8 +152,19 @@ def airmass_kasten_young(alt_deg):
 
 def parallactic_angle(ha_deg, dec_deg, lat_deg):
     """
-    Parallactic angle (degrees).
-    Positive = North to East.
+    Compute the parallactic angle.
+
+    The parallactic angle is the angle between the great circle
+    through the object and the zenith, and the hour circle of the object.
+
+    Args:
+        ha_deg (float): Hour angle in degrees.
+        dec_deg (float): Declination in degrees.
+        lat_deg (float): Observer latitude in degrees.
+
+    Returns:
+        float: Parallactic angle in degrees.
+               Positive values indicate rotation from North toward East.
     """
     ha = radians(ha_deg)
     dec = radians(dec_deg)
@@ -114,12 +180,29 @@ def parallactic_angle(ha_deg, dec_deg, lat_deg):
 
 def altaz_from_radec(ra_deg, dec_deg, time_utc, lat_deg, lon_deg):
     """
-    Full Alt/Az solution including:
-      - Alt
-      - Az
+    Compute a full set of horizontal-coordinate quantities from RA/Dec.
+
+    This is a convenience wrapper that returns:
+      - Altitude
+      - Azimuth
       - Hour angle
       - Airmass
       - Parallactic angle
+
+    Args:
+        ra_deg (float): Right Ascension in degrees.
+        dec_deg (float): Declination in degrees.
+        time_utc (str or astropy.time.Time): Observation time (UTC).
+        lat_deg (float): Observer latitude in degrees (+North).
+        lon_deg (float): Observer longitude in degrees (+East).
+
+    Returns:
+        dict: Dictionary containing:
+            - alt_deg
+            - az_deg
+            - ha_deg
+            - airmass
+            - parallactic_angle_deg
     """
     alt, az, ha = radec_to_altaz(ra_deg, dec_deg, time_utc, lat_deg, lon_deg)
 
