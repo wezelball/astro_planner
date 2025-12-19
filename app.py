@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime, date, time, timedelta, timezone
 from zoneinfo import ZoneInfo   # Python 3.9+
-from src.config_loader import load_config_example
+from src.config_loader import load_config
 from src.catalog import load_openngc_catalog
 from src.horizon import parse_horizon_file
 from src.planner import Planner
@@ -93,7 +93,7 @@ st.title("Astro Planner — Night Target Selector (MVP)")
 
 # Load example config and catalogs
 config_path = "config/config.toml"
-config = load_config_example(config_path)
+config = load_config(config_path)
 
 st.sidebar.header("Configuration")
 
