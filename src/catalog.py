@@ -1,14 +1,50 @@
+"""
+catalog.py
+Catalog loading and normalization utilities.
+
+This module provides helpers to load astronomical object catalogs
+and normalize them into a format suitable for the Planner.
+
+Currently supported:
+- OpenNGC CSV catalog (NGC.csv)
+
+All angular quantities are converted to decimal degrees.
+"""
+
 import pandas as pd
 from astropy.coordinates import Angle
 import numpy as np
 
 def load_openngc_catalog(path: str) -> pd.DataFrame:
     """
-    Load and convert the OpenNGC NGC.csv catalog into a format
-    suitable for the Planner, including:
-        - RA/Dec converted to decimal degrees
-        - Size converted from arcminutes to degrees
-        - Magnitude selection (V-Mag preferred)
+    Load and normalize the OpenNGC NGC.csv catalog.
+
+    The catalog is converted into a Planner-friendly format, including:
+      - Right Ascension converted from HH:MM:SS to decimal degrees
+      - Declination converted to decimal degrees
+      - Object size converted from arcminutes to degrees
+      - A single representative magnitude selected by priority
+
+    Magnitude selection priority:
+      1. V-Mag
+      2. B-Mag
+      3. Surface brightness (SurfBr)
+
+    Args:
+        path (str): Path to the OpenNGC CSV file (semicolon-delimited).
+
+    Returns:
+        pandas.DataFrame: Cleaned catalog with the following columns:
+            - name (str)
+            - type (str)
+            - ra_deg (float)
+            - dec_deg (float)
+            - size_deg (float)
+            - magnitude (float)
+            - constellation (str)
+            - common_names (str)
+
+        Rows lacking valid RA/Dec are removed.
     """
     # OpenNGC uses semicolon separator
     df = pd.read_csv(path, sep=';', dtype=str)
@@ -16,12 +52,22 @@ def load_openngc_catalog(path: str) -> pd.DataFrame:
     # --- RA/Dec conversion ---
     
     def parse_ra(ra_str):
+        """
+        Parse Right Ascension from sexagesimal string to degrees.
+
+        Returns NaN on parse failure.
+        """
         try:
             return Angle(ra_str, unit="hourangle").degree
         except Exception:
             return np.nan
 
     def parse_dec(dec_str):
+        """
+        Parse Declination from sexagesimal string to degrees.
+
+        Returns NaN on parse failure.
+        """
         try:
             return Angle(dec_str, unit="deg").degree
         except Exception:
@@ -32,6 +78,11 @@ def load_openngc_catalog(path: str) -> pd.DataFrame:
 
     # --- Object size (MajAx & MinAx are arcminutes) ---
     def parse_size(val):
+        """
+        Convert size from arcminutes to degrees.
+
+        Returns NaN if value is missing or invalid.
+        """
         try:
             return float(val) / 60.0  # arcmin → degrees
         except:
@@ -46,6 +97,14 @@ def load_openngc_catalog(path: str) -> pd.DataFrame:
     # --- Magnitude selection ---
     # Prefer V-Mag > B-Mag > SurfBr
     def choose_mag(row):
+        """
+        Select the best available magnitude for an object.
+
+        Priority order:
+            V-Mag → B-Mag → SurfBr
+
+        Returns NaN if none are valid.
+        """
         for m in ["V-Mag", "B-Mag", "SurfBr"]:
             val = row.get(m)
             try:
