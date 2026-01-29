@@ -1,0 +1,17 @@
+[project]
+name = "astro-planner"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.2.6",
+    "pandas>=2.3.3",
+    "pathlib>=1.0.1",
+    "skyfield>=1.54",
+    "streamlit>=1.53.1",
+]
+[project.scripts]
+app = "app:main"  # Assuming app.py has if __name__ == "__main__":
+[tool.uv]
+package = true
